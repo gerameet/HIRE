@@ -1,4 +1,4 @@
-name: Auto Formatter
+name: Auto Formatter for Python Files
 
 on:
   push:
@@ -28,23 +28,12 @@ jobs:
       - name: Install formatters
         run: |
           pip install black
-          npm install -g prettier
-          sudo apt-get install -y clang-format
 
-      # 🐍 Python: Black formatter
+      # Python: Black formatter
       - name: Run black
         run: black .
 
-      # 💅 JS/TS: Prettier formatter
-      - name: Run prettier
-        run: prettier --write "**/*.{js,ts,json,md,yml,yaml,html,css}"
-
-      # ⚙️ C/C++: clang-format
-      - name: Run clang-format
-        run: |
-          find . -regex '.*\.\(cpp\|hpp\|c\|h\)$' -exec clang-format -i {} \;
-
-      # ✅ Commit changes if any files were reformatted
+      # Commit changes if any files were reformatted
       - name: Commit and push formatted code
         run: |
           if [[ `git status --porcelain` ]]; then
