@@ -10,25 +10,26 @@ from .data import Segment, BoundingBox
 
 def get_device(preferred: Optional[str] = None) -> str:
     """Get the best available device.
-    
+
     Args:
         preferred: Preferred device ("cuda", "mps", "cpu")
-    
+
     Returns:
         Device string
     """
     if preferred:
         return preferred
-    
+
     try:
         import torch
+
         if torch.cuda.is_available():
             return "cuda"
         if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
             return "mps"
     except ImportError:
         pass
-    
+
     return "cpu"
 
 
@@ -42,17 +43,17 @@ def filter_segments(
     min_area: int = 0,
     max_area: Optional[int] = None,
     min_score: float = 0.0,
-    labels: Optional[List[str]] = None
+    labels: Optional[List[str]] = None,
 ) -> List[Segment]:
     """Filter segments by various criteria.
-    
+
     Args:
         segments: List of segments to filter
         min_area: Minimum area in pixels
         max_area: Maximum area in pixels (None = no limit)
         min_score: Minimum confidence score
         labels: List of allowed labels (None = all labels)
-    
+
     Returns:
         Filtered list of segments
     """
@@ -107,29 +108,28 @@ def compute_iou(mask1: np.ndarray, mask2: np.ndarray) -> float:
 
 
 def non_max_suppression(
-    segments: List[Segment],
-    iou_threshold: float = 0.5
+    segments: List[Segment], iou_threshold: float = 0.5
 ) -> List[Segment]:
     """Apply Non-Maximum Suppression to segments based on IoU.
-    
+
     Args:
         segments: List of segments
         iou_threshold: IoU threshold for suppression
-    
+
     Returns:
         Filtered list of segments
     """
     if not segments:
         return []
-    
+
     # Sort by score (descending)
     sorted_segs = sorted(segments, key=lambda s: s.score, reverse=True)
-    
+
     keep = []
     while sorted_segs:
         current = sorted_segs.pop(0)
         keep.append(current)
-        
+
         # Remove overlapping segments
         remaining = []
         for seg in sorted_segs:
@@ -137,5 +137,5 @@ def non_max_suppression(
             if iou < iou_threshold:
                 remaining.append(seg)
         sorted_segs = remaining
-    
+
     return keep

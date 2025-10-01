@@ -8,22 +8,24 @@ _MODEL_REGISTRY: Dict[str, Type[SegmentationModel]] = {}
 
 def register_model(name: str):
     """Decorator to register a model class."""
+
     def decorator(cls: Type[SegmentationModel]):
         _MODEL_REGISTRY[name.lower()] = cls
         return cls
+
     return decorator
 
 
 def get_model(name: str, config: Optional[ModelConfig] = None) -> SegmentationModel:
     """Factory function to create model instances.
-    
+
     Args:
         name: Model name (e.g., "sam", "mask2former", "yolo")
         config: Model configuration
-    
+
     Returns:
         Initialized model instance
-    
+
     Raises:
         ValueError: If model name is not registered
     """
@@ -31,7 +33,7 @@ def get_model(name: str, config: Optional[ModelConfig] = None) -> SegmentationMo
     if name_lower not in _MODEL_REGISTRY:
         available = ", ".join(_MODEL_REGISTRY.keys())
         raise ValueError(f"Unknown model '{name}'. Available models: {available}")
-    
+
     model_class = _MODEL_REGISTRY[name_lower]
     config = config or ModelConfig()
     return model_class(config)
