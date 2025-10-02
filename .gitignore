@@ -3,6 +3,6 @@
 env/
 *.env
 .idea
-
+WARP.md
 __pycache__
 *.pyc
