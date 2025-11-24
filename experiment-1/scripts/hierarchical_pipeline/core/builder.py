@@ -64,6 +64,8 @@ class BottomUpHierarchyBuilder(HierarchyBuilder):
 
         # For each potential child, choose best parent (highest containment)
         parent_of = {p.id: None for p in parts}
+        # Map ids to parts for quick lookup later (used to break cycles)
+        id_to_part = {p.id: p for p in parts}
         for j in range(n):
             best_parent = None
             best_score = 0.0
@@ -87,7 +89,36 @@ class BottomUpHierarchyBuilder(HierarchyBuilder):
             if best_parent:
                 parent_of[parts[j].id] = (best_parent, best_score)
 
-        # Add edges for chosen parent-child relations
+        # Detect and break simple mutual parent-child assignments to avoid
+        # creating cycles (which would make level propagation diverge).
+        # If A->B and B->A are both selected, keep the direction with
+        # higher containment score (or larger area as tiebreaker).
+        for child_id, pinfo in list(parent_of.items()):
+            if pinfo is None:
+                continue
+            parent_id, score = pinfo
+            other = parent_of.get(parent_id)
+            if other is None:
+                continue
+            other_parent, other_score = other
+            if other_parent == child_id:
+                # mutual assignment detected between child_id and parent_id
+                # choose direction to keep
+                if score > other_score:
+                    # keep parent_id -> child_id, remove parent for parent_id
+                    parent_of[parent_id] = None
+                elif score < other_score:
+                    parent_of[child_id] = None
+                else:
+                    # tie: use area as tiebreaker
+                    a_child = id_to_part[child_id].get_area()
+                    a_parent = id_to_part[parent_id].get_area()
+                    if a_parent >= a_child:
+                        parent_of[parent_id] = None
+                    else:
+                        parent_of[child_id] = None
+
+        # Add edges for chosen parent-child relations (after cycle-break)
         for child_id, pinfo in parent_of.items():
             if pinfo is None:
                 continue
@@ -101,9 +132,13 @@ class BottomUpHierarchyBuilder(HierarchyBuilder):
             )
 
         # Compute levels: leaf=0, parent level = 1 + max(child.level)
-        # First set leaves to level 0 (already), then propagate up
+        # First set leaves to level 0 (already), then propagate up.
+        # Add a safety iteration cap to prevent infinite loops in pathological cases.
         changed = True
-        while changed:
+        max_iters = max(100, len(graph.nodes) * 10)
+        iters = 0
+        while changed and iters < max_iters:
+            iters += 1
             changed = False
             for node in list(graph.nodes.values()):
                 if node.children:
@@ -115,6 +150,18 @@ class BottomUpHierarchyBuilder(HierarchyBuilder):
                         if node.level != desired:
                             node.level = desired
                             changed = True
+
+        if iters >= max_iters:
+            # Fallback: assign levels by doing a topological-style pass where
+            # nodes with no children remain 0 and parents are set to 1+max(children)
+            # without further looping to avoid hanging.
+            for node in list(graph.nodes.values()):
+                if node.children:
+                    child_levels = [
+                        graph.nodes[c].level for c in node.children if c in graph.nodes
+                    ]
+                    if child_levels:
+                        node.level = 1 + max(child_levels)
 
         # Choose root: node with no parent and largest area
         root_candidates = [n for n in graph.nodes.values() if n.parent is None]
