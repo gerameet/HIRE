@@ -13,7 +13,7 @@ from .data import Part, ParseGraph
 
 class PartDiscoveryMethod(ABC):
     """Abstract interface for part discovery methods.
-    
+
     Implementations include:
     - Existing segmentation models (YOLO, SAM, Mask2Former)
     - Object-centric models (Slot Attention, COCA)
@@ -22,7 +22,7 @@ class PartDiscoveryMethod(ABC):
 
     def __init__(self, config: Dict[str, Any]):
         """Initialize the part discovery method.
-        
+
         Args:
             config: Configuration dictionary containing method-specific parameters
         """
@@ -31,30 +31,28 @@ class PartDiscoveryMethod(ABC):
     @abstractmethod
     def discover_parts(self, image: np.ndarray) -> List[Part]:
         """Discover parts in an image.
-        
+
         Args:
             image: Input image as numpy array (H, W, C) with dtype uint8
-            
+
         Returns:
             List of Part objects containing masks, bboxes, and optional features
-            
+
         Raises:
             ValueError: If image format is invalid
             RuntimeError: If discovery fails
         """
         pass
 
-    def discover_parts_batch(
-        self, images: List[np.ndarray]
-    ) -> List[List[Part]]:
+    def discover_parts_batch(self, images: List[np.ndarray]) -> List[List[Part]]:
         """Discover parts in a batch of images.
-        
+
         Default implementation processes images one by one.
         Override for true batch processing with GPU acceleration.
-        
+
         Args:
             images: List of input images
-            
+
         Returns:
             List of part lists (one list per image)
         """
@@ -62,7 +60,7 @@ class PartDiscoveryMethod(ABC):
 
     def get_method_info(self) -> Dict[str, Any]:
         """Get information about this discovery method.
-        
+
         Returns:
             Dictionary with method metadata
         """
@@ -74,7 +72,7 @@ class PartDiscoveryMethod(ABC):
 
 class EmbeddingMethod(ABC):
     """Abstract interface for embedding generation methods.
-    
+
     Implementations include:
     - Self-supervised encoders (DINO, MAE, MoCo)
     - Vision-language models (CLIP)
@@ -83,7 +81,7 @@ class EmbeddingMethod(ABC):
 
     def __init__(self, config: Dict[str, Any]):
         """Initialize the embedding method.
-        
+
         Args:
             config: Configuration dictionary containing method-specific parameters
         """
@@ -93,14 +91,14 @@ class EmbeddingMethod(ABC):
     @abstractmethod
     def embed_part(self, image: np.ndarray, mask: np.ndarray) -> np.ndarray:
         """Generate embedding for a masked region.
-        
+
         Args:
             image: Full image as numpy array (H, W, C)
             mask: Binary mask for the part (H, W) with dtype bool or uint8
-            
+
         Returns:
             Embedding vector as 1D numpy array (normalized)
-            
+
         Raises:
             ValueError: If image or mask format is invalid
             RuntimeError: If embedding generation fails
@@ -111,14 +109,14 @@ class EmbeddingMethod(ABC):
         self, images: List[np.ndarray], masks: List[np.ndarray]
     ) -> np.ndarray:
         """Generate embeddings for a batch of masked regions.
-        
+
         Default implementation processes parts one by one.
         Override for true batch processing with GPU acceleration.
-        
+
         Args:
             images: List of full images
             masks: List of binary masks (one per image)
-            
+
         Returns:
             Embedding matrix as 2D numpy array (N, embedding_dim)
         """
@@ -129,7 +127,7 @@ class EmbeddingMethod(ABC):
 
     def get_embedding_dim(self) -> int:
         """Get the dimensionality of embeddings produced by this method.
-        
+
         Returns:
             Embedding dimension
         """
@@ -137,7 +135,7 @@ class EmbeddingMethod(ABC):
 
     def get_method_info(self) -> Dict[str, Any]:
         """Get information about this embedding method.
-        
+
         Returns:
             Dictionary with method metadata
         """
@@ -150,7 +148,7 @@ class EmbeddingMethod(ABC):
 
 class HierarchyBuilder(ABC):
     """Abstract interface for hierarchy construction methods.
-    
+
     Implementations include:
     - Bottom-up spatial clustering
     - Top-down grammar parsing
@@ -160,7 +158,7 @@ class HierarchyBuilder(ABC):
 
     def __init__(self, config: Dict[str, Any]):
         """Initialize the hierarchy builder.
-        
+
         Args:
             config: Configuration dictionary containing method-specific parameters
         """
@@ -169,13 +167,13 @@ class HierarchyBuilder(ABC):
     @abstractmethod
     def build_hierarchy(self, parts: List[Part]) -> ParseGraph:
         """Construct hierarchical parse graph from parts.
-        
+
         Args:
             parts: List of discovered parts with embeddings
-            
+
         Returns:
             ParseGraph with nodes (parts) and edges (relationships)
-            
+
         Raises:
             ValueError: If parts list is invalid
             RuntimeError: If hierarchy construction fails
@@ -184,7 +182,7 @@ class HierarchyBuilder(ABC):
 
     def get_method_info(self) -> Dict[str, Any]:
         """Get information about this hierarchy builder.
-        
+
         Returns:
             Dictionary with method metadata
         """

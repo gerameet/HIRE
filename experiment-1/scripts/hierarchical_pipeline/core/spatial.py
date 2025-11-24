@@ -11,6 +11,7 @@ import numpy as np
 
 try:
     import torch
+
     HAS_TORCH = True
 except Exception:
     HAS_TORCH = False
@@ -59,7 +60,9 @@ def iou(mask_a: np.ndarray, mask_b: np.ndarray, device: str = "cpu") -> float:
     return 0.0 if union == 0 else inter / union
 
 
-def containment_ratio(parent_mask: np.ndarray, child_mask: np.ndarray, device: str = "cpu") -> float:
+def containment_ratio(
+    parent_mask: np.ndarray, child_mask: np.ndarray, device: str = "cpu"
+) -> float:
     """Compute fraction of child's area that is contained inside parent.
 
     Returns intersection_area / child_area (0..1). If child area is zero,
@@ -83,7 +86,9 @@ def containment_ratio(parent_mask: np.ndarray, child_mask: np.ndarray, device: s
     return inter / c_area
 
 
-def pairwise_overlap_matrix(masks: List[np.ndarray], device: str = "cpu") -> Tuple[List[float], List[List[float]]]:
+def pairwise_overlap_matrix(
+    masks: List[np.ndarray], device: str = "cpu"
+) -> Tuple[List[float], List[List[float]]]:
     """Compute areas and pairwise intersections for a list of masks.
 
     Returns (areas, intersection_matrix) where areas is list of pixel counts
@@ -97,7 +102,10 @@ def pairwise_overlap_matrix(masks: List[np.ndarray], device: str = "cpu") -> Tup
     if not HAS_TORCH:
         bool_masks = [m.astype(bool) for m in masks]
         areas = [float(m.sum()) for m in bool_masks]
-        inter = [[float((bool_masks[i] & bool_masks[j]).sum()) for j in range(n)] for i in range(n)]
+        inter = [
+            [float((bool_masks[i] & bool_masks[j]).sum()) for j in range(n)]
+            for i in range(n)
+        ]
         return areas, inter
 
     # Convert to flat uint8 tensor (N, H*W)

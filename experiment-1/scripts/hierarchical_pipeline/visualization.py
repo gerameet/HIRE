@@ -3,6 +3,7 @@
 Includes simple NetworkX-based tree plotting and mask overlay utilities
 for quick inspection during Phase 1 experimentation.
 """
+
 from typing import Optional, List
 import numpy as np
 
@@ -41,14 +42,18 @@ def overlay_masks(image: np.ndarray, masks: List[np.ndarray], alpha: float = 0.5
         color = colors[i % len(colors)]
         mask_bool = (m > 0).astype(np.bool_)
         for c in range(3):
-            out[..., c] = np.where(mask_bool, out[..., c] * (1 - alpha) + alpha * color[c], out[..., c])
+            out[..., c] = np.where(
+                mask_bool, out[..., c] * (1 - alpha) + alpha * color[c], out[..., c]
+            )
 
     # Convert back to uint8
     out_img = (np.clip(out, 0, 1) * 255).astype(np.uint8)
     return out_img
 
 
-def plot_parse_tree(parse_graph, image: Optional[np.ndarray] = None, show_overlay: bool = True, ax=None):
+def plot_parse_tree(
+    parse_graph, image: Optional[np.ndarray] = None, show_overlay: bool = True, ax=None
+):
     """Plot the parse graph using NetworkX and optionally show mask overlay.
 
     Args:

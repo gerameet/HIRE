@@ -26,11 +26,19 @@ def add_scripts_to_path():
 
 def parse_args():
     p = argparse.ArgumentParser(description="Run Phase 1 hierarchical pipeline")
-    p.add_argument("--images", required=True, help="Image file or directory containing images")
-    p.add_argument("--model", default="dummy", help="Segmentation model name (registered)")
-    p.add_argument("--output", default="experiment-1/output/phase1", help="Output directory")
+    p.add_argument(
+        "--images", required=True, help="Image file or directory containing images"
+    )
+    p.add_argument(
+        "--model", default="dummy", help="Segmentation model name (registered)"
+    )
+    p.add_argument(
+        "--output", default="experiment-1/output/phase1", help="Output directory"
+    )
     p.add_argument("--device", default=None, help="Device string, e.g. cuda:0 or cpu")
-    p.add_argument("--save-overlay", action="store_true", help="Save mask overlay images")
+    p.add_argument(
+        "--save-overlay", action="store_true", help="Save mask overlay images"
+    )
     p.add_argument("--save-graph", action="store_true", help="Save parse graph JSON")
     return p.parse_args()
 
@@ -50,7 +58,11 @@ def main():
     add_scripts_to_path()
 
     # Import local packages after adjusting sys.path
-    from hierarchical_pipeline.config import load_config, create_default_config, validate_config
+    from hierarchical_pipeline.config import (
+        load_config,
+        create_default_config,
+        validate_config,
+    )
     from hierarchical_pipeline.utils.gpu import GPUManager
     from hierarchical_pipeline.adapters.segmentation import SegmentationDiscoveryAdapter
     from hierarchical_pipeline.core.builder import BottomUpHierarchyBuilder
@@ -69,7 +81,9 @@ def main():
 
     validate_config(config)
 
-    gpu_mgr = GPUManager(device=config.gpu.device, allow_cpu_fallback=config.gpu.allow_cpu_fallback)
+    gpu_mgr = GPUManager(
+        device=config.gpu.device, allow_cpu_fallback=config.gpu.allow_cpu_fallback
+    )
 
     print(f"Using device: {gpu_mgr.device}")
 
@@ -83,10 +97,13 @@ def main():
 
     # Initialize model (context manager supported)
     with seg_model as model:
-        adapter = SegmentationDiscoveryAdapter(model, config={
-            "min_confidence": model.config.confidence_threshold,
-            "min_area": model.config.min_area,
-        })
+        adapter = SegmentationDiscoveryAdapter(
+            model,
+            config={
+                "min_confidence": model.config.confidence_threshold,
+                "min_area": model.config.min_area,
+            },
+        )
 
         builder = BottomUpHierarchyBuilder(config=config.hierarchy.__dict__)
 
@@ -119,9 +136,11 @@ def main():
                 masks = [p.mask for p in parts]
                 if masks:
                     import numpy as np
+
                     img_np = np.array(img)
                     overlay = overlay_masks(img_np, masks)
                     from PIL import Image as PILImage
+
                     overlay_pil = PILImage.fromarray(overlay)
                     overlay_path = str(out_prefix.with_suffix(".overlay.png"))
                     overlay_pil.save(overlay_path)

@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 # Try to import yaml, fall back to JSON if not available
 try:
     import yaml
+
     HAS_YAML = True
 except ImportError:
     HAS_YAML = False
@@ -24,6 +25,7 @@ except ImportError:
 @dataclass
 class PartDiscoveryConfig:
     """Configuration for part discovery methods."""
+
     method: str = "slot_attention"  # "slot_attention", "sam", "coca", "yolo"
     params: Dict[str, Any] = field(default_factory=dict)
 
@@ -31,6 +33,7 @@ class PartDiscoveryConfig:
 @dataclass
 class EmbeddingConfig:
     """Configuration for embedding generation."""
+
     method: str = "dino"  # "dino", "clip", "mae", "moco"
     model_name: str = "facebook/dino-vitb16"
     embedding_dim: int = 768
@@ -41,17 +44,21 @@ class EmbeddingConfig:
 @dataclass
 class HierarchyConfig:
     """Configuration for hierarchy construction."""
+
     method: str = "bottom_up"  # "bottom_up", "top_down", "hybrid", "gnn"
-    params: Dict[str, Any] = field(default_factory=lambda: {
-        "spatial_threshold": 0.3,
-        "containment_threshold": 0.7,
-        "max_depth": 5,
-    })
+    params: Dict[str, Any] = field(
+        default_factory=lambda: {
+            "spatial_threshold": 0.3,
+            "containment_threshold": 0.7,
+            "max_depth": 5,
+        }
+    )
 
 
 @dataclass
 class KnowledgeConfig:
     """Configuration for knowledge graph integration."""
+
     use_knowledge_graph: bool = False
     sources: list = field(default_factory=lambda: ["wordnet"])
     alignment_method: str = "clip_similarity"
@@ -61,6 +68,7 @@ class KnowledgeConfig:
 @dataclass
 class OutputConfig:
     """Configuration for output and saving."""
+
     save_parse_graphs: bool = True
     save_embeddings: bool = True
     save_visualizations: bool = True
@@ -70,6 +78,7 @@ class OutputConfig:
 @dataclass
 class VisualizationConfig:
     """Configuration for visualizations."""
+
     plot_parse_tree: bool = True
     plot_spatial_overlay: bool = True
     plot_embedding_space: bool = True
@@ -79,6 +88,7 @@ class VisualizationConfig:
 @dataclass
 class GPUConfig:
     """Configuration for GPU usage."""
+
     device: Optional[str] = None  # None for auto-detect, "cuda", "cuda:0", "cpu"
     allow_cpu_fallback: bool = True
     use_mixed_precision: bool = False
@@ -88,6 +98,7 @@ class GPUConfig:
 @dataclass
 class PipelineConfig:
     """Complete pipeline configuration."""
+
     name: str = "hierarchical_visual_pipeline"
     part_discovery: PartDiscoveryConfig = field(default_factory=PartDiscoveryConfig)
     embedding: EmbeddingConfig = field(default_factory=EmbeddingConfig)
@@ -99,7 +110,7 @@ class PipelineConfig:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert config to dictionary.
-        
+
         Returns:
             Dictionary representation
         """
@@ -107,17 +118,17 @@ class PipelineConfig:
 
     def save(self, path: str) -> None:
         """Save configuration to file.
-        
+
         Args:
             path: Path to save config (supports .yaml, .yml, .json)
         """
         config_dict = self.to_dict()
-        
+
         # Determine format from extension
         ext = os.path.splitext(path)[1].lower()
-        
+
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
-        
+
         if ext in [".yaml", ".yml"] and HAS_YAML:
             with open(path, "w") as f:
                 yaml.dump(config_dict, f, default_flow_style=False, sort_keys=False)
@@ -127,7 +138,7 @@ class PipelineConfig:
             if ext in [".yaml", ".yml"]:
                 logger.warning(f"YAML not available, saving as JSON instead")
                 path = path.replace(".yaml", ".json").replace(".yml", ".json")
-            
+
             with open(path, "w") as f:
                 json.dump(config_dict, f, indent=2)
             logger.info(f"Saved config to {path}")
@@ -135,10 +146,10 @@ class PipelineConfig:
     @classmethod
     def from_dict(cls, config_dict: Dict[str, Any]) -> "PipelineConfig":
         """Create config from dictionary.
-        
+
         Args:
             config_dict: Dictionary with config values
-            
+
         Returns:
             PipelineConfig instance
         """
@@ -150,7 +161,7 @@ class PipelineConfig:
         output = OutputConfig(**config_dict.get("output", {}))
         visualization = VisualizationConfig(**config_dict.get("visualization", {}))
         gpu = GPUConfig(**config_dict.get("gpu", {}))
-        
+
         return cls(
             name=config_dict.get("name", "hierarchical_visual_pipeline"),
             part_discovery=part_discovery,
@@ -165,22 +176,22 @@ class PipelineConfig:
 
 def load_config(path: str) -> PipelineConfig:
     """Load configuration from file.
-    
+
     Args:
         path: Path to config file (.yaml, .yml, or .json)
-        
+
     Returns:
         PipelineConfig instance
-        
+
     Raises:
         FileNotFoundError: If config file doesn't exist
         ValueError: If config file is invalid
     """
     if not os.path.exists(path):
         raise FileNotFoundError(f"Config file not found: {path}")
-    
+
     ext = os.path.splitext(path)[1].lower()
-    
+
     try:
         if ext in [".yaml", ".yml"]:
             if not HAS_YAML:
@@ -194,41 +205,41 @@ def load_config(path: str) -> PipelineConfig:
                 config_dict = json.load(f)
         else:
             raise ValueError(f"Unsupported config format: {ext}")
-        
+
         logger.info(f"Loaded config from {path}")
         return PipelineConfig.from_dict(config_dict)
-        
+
     except Exception as e:
         raise ValueError(f"Failed to load config from {path}: {e}")
 
 
 def create_default_config(save_path: Optional[str] = None) -> PipelineConfig:
     """Create a default configuration.
-    
+
     Args:
         save_path: Optional path to save the default config
-        
+
     Returns:
         Default PipelineConfig instance
     """
     config = PipelineConfig()
-    
+
     if save_path:
         config.save(save_path)
         logger.info(f"Created default config at {save_path}")
-    
+
     return config
 
 
 def validate_config(config: PipelineConfig) -> bool:
     """Validate configuration values.
-    
+
     Args:
         config: PipelineConfig to validate
-        
+
     Returns:
         True if valid
-        
+
     Raises:
         ValueError: If config is invalid
     """
@@ -239,7 +250,7 @@ def validate_config(config: PipelineConfig) -> bool:
             f"Invalid part discovery method: {config.part_discovery.method}. "
             f"Must be one of {valid_discovery_methods}"
         )
-    
+
     # Validate embedding method
     valid_embedding_methods = ["dino", "clip", "mae", "moco"]
     if config.embedding.method not in valid_embedding_methods:
@@ -247,7 +258,7 @@ def validate_config(config: PipelineConfig) -> bool:
             f"Invalid embedding method: {config.embedding.method}. "
             f"Must be one of {valid_embedding_methods}"
         )
-    
+
     # Validate hierarchy method
     valid_hierarchy_methods = ["bottom_up", "top_down", "hybrid", "gnn"]
     if config.hierarchy.method not in valid_hierarchy_methods:
@@ -255,7 +266,7 @@ def validate_config(config: PipelineConfig) -> bool:
             f"Invalid hierarchy method: {config.hierarchy.method}. "
             f"Must be one of {valid_hierarchy_methods}"
         )
-    
+
     # Validate hyperbolic model
     if config.embedding.use_hyperbolic:
         valid_hyperbolic = ["poincare", "lorentz"]
@@ -264,7 +275,7 @@ def validate_config(config: PipelineConfig) -> bool:
                 f"Invalid hyperbolic model: {config.embedding.hyperbolic_model}. "
                 f"Must be one of {valid_hyperbolic}"
             )
-    
+
     # Validate GPU device
     if config.gpu.device is not None:
         valid_devices = ["cpu", "cuda"]
@@ -274,14 +285,14 @@ def validate_config(config: PipelineConfig) -> bool:
                 f"Invalid device: {config.gpu.device}. "
                 f"Must start with 'cpu' or 'cuda'"
             )
-    
+
     # Validate thresholds
     if not 0 <= config.knowledge.alignment_threshold <= 1:
         raise ValueError(
             f"alignment_threshold must be between 0 and 1, "
             f"got {config.knowledge.alignment_threshold}"
         )
-    
+
     logger.info("Configuration validated successfully")
     return True
 

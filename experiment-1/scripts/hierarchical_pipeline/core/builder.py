@@ -26,7 +26,7 @@ class BottomUpHierarchyBuilder(HierarchyBuilder):
 
     def __init__(self, config: Optional[Dict[str, Any]] = None):
         super().__init__(config or {})
-        params = (self.config.get("params") or {})
+        params = self.config.get("params") or {}
         self.containment_threshold = params.get("containment_threshold", 0.7)
         self.spatial_threshold = params.get("spatial_threshold", 0.3)
 
@@ -77,7 +77,10 @@ class BottomUpHierarchyBuilder(HierarchyBuilder):
                 # Use precomputed intersection
                 intersection = float(inter[i][j])
                 containment = intersection / areas[j] if areas[j] > 0 else 0.0
-                if containment > self.containment_threshold and containment > best_score:
+                if (
+                    containment > self.containment_threshold
+                    and containment > best_score
+                ):
                     best_score = containment
                     best_parent = parts[i].id
 
@@ -89,7 +92,13 @@ class BottomUpHierarchyBuilder(HierarchyBuilder):
             if pinfo is None:
                 continue
             parent_id, score = pinfo
-            graph.add_edge(parent_id, child_id, relation_type="contains", confidence=float(score), spatial_features={"containment": float(score)})
+            graph.add_edge(
+                parent_id,
+                child_id,
+                relation_type="contains",
+                confidence=float(score),
+                spatial_features={"containment": float(score)},
+            )
 
         # Compute levels: leaf=0, parent level = 1 + max(child.level)
         # First set leaves to level 0 (already), then propagate up
@@ -98,7 +107,9 @@ class BottomUpHierarchyBuilder(HierarchyBuilder):
             changed = False
             for node in list(graph.nodes.values()):
                 if node.children:
-                    child_levels = [graph.nodes[c].level for c in node.children if c in graph.nodes]
+                    child_levels = [
+                        graph.nodes[c].level for c in node.children if c in graph.nodes
+                    ]
                     if child_levels:
                         desired = 1 + max(child_levels)
                         if node.level != desired:

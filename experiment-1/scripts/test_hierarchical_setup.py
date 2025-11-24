@@ -32,6 +32,7 @@ try:
         create_default_config,
         PipelineConfig,
     )
+
     print("✓ All imports successful")
 except Exception as e:
     print(f"✗ Import failed: {e}")
@@ -41,6 +42,7 @@ except Exception as e:
 print("\n[2/5] Testing GPU detection...")
 try:
     import torch
+
     device = get_device()
     print(f"✓ Device detected: {device}")
     print(f"  CUDA available: {torch.cuda.is_available()}")
@@ -57,11 +59,13 @@ try:
     print(f"✓ GPU Manager initialized")
     print(f"  Using device: {gpu_manager.device}")
     print(f"  GPU available: {gpu_manager.is_gpu_available()}")
-    
+
     if gpu_manager.is_gpu_available():
         mem_info = gpu_manager.get_memory_info()
-        print(f"  GPU memory: {mem_info['allocated_mb']:.1f}MB allocated, "
-              f"{mem_info['free_mb']:.1f}MB free")
+        print(
+            f"  GPU memory: {mem_info['allocated_mb']:.1f}MB allocated, "
+            f"{mem_info['free_mb']:.1f}MB free"
+        )
 except Exception as e:
     print(f"✗ GPU Manager failed: {e}")
 
@@ -75,24 +79,27 @@ try:
     print(f"  Embedding method: {config.embedding.method}")
     print(f"  Hierarchy method: {config.hierarchy.method}")
     print(f"  GPU device: {config.gpu.device or 'auto-detect'}")
-    
+
     # Test config validation
     from hierarchical_pipeline.config import validate_config
+
     validate_config(config)
     print(f"✓ Config validation passed")
-    
+
     # Test config save/load
     import tempfile
     import os
+
     with tempfile.TemporaryDirectory() as tmpdir:
         config_path = os.path.join(tmpdir, "test_config.json")
         config.save(config_path)
         loaded_config = load_config(config_path)
         print(f"✓ Config save/load successful")
-        
+
 except Exception as e:
     print(f"✗ Configuration test failed: {e}")
     import traceback
+
     traceback.print_exc()
 
 # Test 5: Data structures
@@ -107,7 +114,7 @@ try:
         confidence=0.95,
     )
     print(f"✓ Part created (area: {part.get_area()} pixels)")
-    
+
     # Create a Node
     node = Node(
         id="node_0",
@@ -117,7 +124,7 @@ try:
         concept_confidence=0.8,
     )
     print(f"✓ Node created (level: {node.level})")
-    
+
     # Create a ParseGraph
     graph = ParseGraph(
         image_path="test.jpg",
@@ -125,19 +132,20 @@ try:
     )
     graph.add_node(node)
     print(f"✓ ParseGraph created ({len(graph.nodes)} nodes)")
-    
+
     # Test serialization
     json_str = graph.to_json()
     reconstructed = ParseGraph.from_json(json_str)
     print(f"✓ Serialization round-trip successful")
-    
+
     # Test summary
     summary = graph.get_summary()
     print(f"✓ Graph summary: {summary}")
-    
+
 except Exception as e:
     print(f"✗ Data structure test failed: {e}")
     import traceback
+
     traceback.print_exc()
 
 print("\n" + "=" * 60)

@@ -17,7 +17,7 @@ import json
 @dataclass
 class Part:
     """A discovered visual part.
-    
+
     Represents a fine-grained segment of an image discovered through
     object-centric learning, segmentation, or other methods.
     """
@@ -46,7 +46,7 @@ class Part:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary (for serialization).
-        
+
         Note: mask, features, and embedding are not included in dict form.
         Use separate serialization for those.
         """
@@ -62,7 +62,7 @@ class Part:
 @dataclass
 class Node:
     """A node in the parse graph.
-    
+
     Represents a visual concept at a specific level of the hierarchy.
     """
 
@@ -90,7 +90,7 @@ class Node:
 @dataclass
 class Edge:
     """An edge in the parse graph.
-    
+
     Represents a hierarchical relationship between two nodes.
     """
 
@@ -114,7 +114,7 @@ class Edge:
 @dataclass
 class ParseGraph:
     """Hierarchical parse graph for an image.
-    
+
     Represents the complete compositional structure of a visual scene
     as a directed acyclic graph (DAG) of parts and their relationships.
     """
@@ -128,7 +128,7 @@ class ParseGraph:
 
     def add_node(self, node: Node) -> None:
         """Add a node (part) to the graph.
-        
+
         Args:
             node: Node to add
         """
@@ -143,7 +143,7 @@ class ParseGraph:
         spatial_features: Optional[Dict[str, float]] = None,
     ) -> None:
         """Add hierarchical edge.
-        
+
         Args:
             parent_id: ID of parent node
             child_id: ID of child node
@@ -168,10 +168,10 @@ class ParseGraph:
 
     def get_level(self, level: int) -> List[Node]:
         """Get all nodes at a specific hierarchy level.
-        
+
         Args:
             level: Hierarchy level
-            
+
         Returns:
             List of nodes at that level
         """
@@ -179,23 +179,25 @@ class ParseGraph:
 
     def get_children(self, node_id: str) -> List[Node]:
         """Get all children of a node.
-        
+
         Args:
             node_id: ID of parent node
-            
+
         Returns:
             List of child nodes
         """
         if node_id not in self.nodes:
             return []
-        return [self.nodes[cid] for cid in self.nodes[node_id].children if cid in self.nodes]
+        return [
+            self.nodes[cid] for cid in self.nodes[node_id].children if cid in self.nodes
+        ]
 
     def get_parent(self, node_id: str) -> Optional[Node]:
         """Get parent of a node.
-        
+
         Args:
             node_id: ID of child node
-            
+
         Returns:
             Parent node or None if no parent
         """
@@ -206,10 +208,10 @@ class ParseGraph:
 
     def traverse_dfs(self, start_node: Optional[str] = None) -> Iterator[Node]:
         """Depth-first traversal of the graph.
-        
+
         Args:
             start_node: Node ID to start from (defaults to root)
-            
+
         Yields:
             Nodes in DFS order
         """
@@ -236,7 +238,7 @@ class ParseGraph:
 
     def get_depth(self) -> int:
         """Get maximum depth of the hierarchy.
-        
+
         Returns:
             Maximum depth (0 if empty)
         """
@@ -246,7 +248,7 @@ class ParseGraph:
 
     def to_json(self) -> str:
         """Serialize to JSON.
-        
+
         Returns:
             JSON string representation
         """
@@ -261,22 +263,24 @@ class ParseGraph:
         return json.dumps(data, indent=2)
 
     @classmethod
-    def from_json(cls, json_str: str, parts_dict: Optional[Dict[str, Part]] = None) -> ParseGraph:
+    def from_json(
+        cls, json_str: str, parts_dict: Optional[Dict[str, Part]] = None
+    ) -> ParseGraph:
         """Deserialize from JSON.
-        
+
         Args:
             json_str: JSON string representation
             parts_dict: Optional dictionary mapping part IDs to Part objects
                        (required for full reconstruction)
-        
+
         Returns:
             ParseGraph instance
-            
+
         Note:
             Without parts_dict, nodes will have placeholder Part objects.
         """
         data = json.loads(json_str)
-        
+
         graph = cls(
             image_path=data["image_path"],
             image_size=tuple(data["image_size"]),
@@ -287,7 +291,7 @@ class ParseGraph:
         # Reconstruct nodes
         for node_id, node_data in data["nodes"].items():
             part_id = node_data["part_id"]
-            
+
             # Get part from dict or create placeholder
             if parts_dict and part_id in parts_dict:
                 part = parts_dict[part_id]
@@ -298,7 +302,7 @@ class ParseGraph:
                     mask=np.zeros((1, 1), dtype=np.uint8),
                     bbox=(0, 0, 0, 0),
                 )
-            
+
             node = Node(
                 id=node_id,
                 part=part,
@@ -325,10 +329,10 @@ class ParseGraph:
 
     def to_networkx(self):
         """Convert to NetworkX graph for analysis.
-        
+
         Returns:
             NetworkX DiGraph with nodes and edges
-            
+
         Note:
             Requires networkx to be installed.
         """
@@ -339,10 +343,10 @@ class ParseGraph:
                 "NetworkX is required for graph conversion. "
                 "Install with: pip install networkx"
             )
-        
+
         # Create directed graph
         G = nx.DiGraph()
-        
+
         # Add nodes with attributes
         for node_id, node in self.nodes.items():
             G.add_node(
@@ -354,7 +358,7 @@ class ParseGraph:
                 bbox=node.part.bbox,
                 area=node.part.get_area(),
             )
-        
+
         # Add edges with attributes
         for edge in self.edges:
             G.add_edge(
@@ -364,18 +368,18 @@ class ParseGraph:
                 confidence=edge.confidence,
                 **edge.spatial_features,
             )
-        
+
         # Store graph-level metadata
         G.graph["image_path"] = self.image_path
         G.graph["image_size"] = self.image_size
         G.graph["root"] = self.root
         G.graph.update(self.metadata)
-        
+
         return G
 
     def get_summary(self) -> Dict[str, Any]:
         """Get summary statistics of the parse graph.
-        
+
         Returns:
             Dictionary with summary information
         """
