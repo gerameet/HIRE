@@ -1,0 +1,7 @@
+numpy
+Pillow
+matplotlib
+networkx
+# Optional (install for GPU support)
+torch
+torchvision

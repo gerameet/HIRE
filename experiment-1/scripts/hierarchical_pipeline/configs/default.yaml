@@ -1,0 +1,49 @@
+# Hierarchical Visual Pipeline - Default Configuration
+
+name: "hierarchical_visual_pipeline"
+
+part_discovery:
+  method: "slot_attention"  # Options: slot_attention, sam, coca, yolo, existing
+  params:
+    num_slots: 7
+    slot_dim: 64
+    num_iterations: 3
+
+embedding:
+  method: "dino"  # Options: dino, clip, mae, moco
+  model_name: "facebook/dino-vitb16"
+  embedding_dim: 768
+  use_hyperbolic: false
+  hyperbolic_model: "poincare"  # Options: poincare, lorentz
+
+hierarchy:
+  method: "bottom_up"  # Options: bottom_up, top_down, hybrid, gnn
+  params:
+    spatial_threshold: 0.3
+    containment_threshold: 0.7
+    max_depth: 5
+
+knowledge:
+  use_knowledge_graph: false
+  sources:
+    - "wordnet"
+  alignment_method: "clip_similarity"
+  alignment_threshold: 0.5
+
+output:
+  save_parse_graphs: true
+  save_embeddings: true
+  save_visualizations: true
+  output_dir: "output/hierarchical"
+
+visualization:
+  plot_parse_tree: true
+  plot_spatial_overlay: true
+  plot_embedding_space: true
+  plot_attention_maps: false
+
+gpu:
+  device: null  # null for auto-detect, or "cuda", "cuda:0", "cpu"
+  allow_cpu_fallback: true
+  use_mixed_precision: false
+  batch_size: 8
