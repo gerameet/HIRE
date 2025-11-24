@@ -89,6 +89,7 @@ def plot_parse_tree(
     nx.draw(G, pos=pos, ax=ax, with_labels=False, node_size=500, node_color="lightblue")
     nx.draw_networkx_labels(G, pos, labels, ax=ax, font_size=8)
 
+    overlay = None
     if image is not None and show_overlay:
         # Collect masks in node order
         masks = []
@@ -102,6 +103,6 @@ def plot_parse_tree(
 
         if masks:
             overlay = overlay_masks(image, masks)
-            return overlay
 
-    return None
+    # Return both overlay image (or None) and the created figure for saving
+    return overlay, fig

@@ -26,15 +26,11 @@ def add_scripts_to_path():
 
 def parse_args():
     p = argparse.ArgumentParser(description="Run Phase 1 hierarchical pipeline")
-    p.add_argument(
-        "--images", required=True, help="Image file or directory containing images"
-    )
-    p.add_argument(
-        "--model", default="dummy", help="Segmentation model name (registered)"
-    )
-    p.add_argument(
-        "--output", default="experiment-1/output/phase1", help="Output directory"
-    )
+    p.add_argument("--images", required=True, help="Image file or directory containing images")
+    p.add_argument("--model", default="dummy", help="Segmentation model name (registered)")
+    p.add_argument("--list-models", action="store_true", help="List available segmentation models and exit")
+    p.add_argument("--model-params", default=None, help="JSON string or path to JSON file with model extra params (e.g. '{\"num_masks\":5}')")
+    p.add_argument("--output", default="experiment-1/output/phase1", help="Output directory")
     p.add_argument("--device", default=None, help="Device string, e.g. cuda:0 or cpu")
     p.add_argument(
         "--save-overlay", action="store_true", help="Save mask overlay images"
@@ -66,13 +62,17 @@ def main():
     from hierarchical_pipeline.utils.gpu import GPUManager
     from hierarchical_pipeline.adapters.segmentation import SegmentationDiscoveryAdapter
     from hierarchical_pipeline.core.builder import BottomUpHierarchyBuilder
-    from hierarchical_pipeline.visualization import overlay_masks
+    from hierarchical_pipeline.visualization import overlay_masks, plot_parse_tree
 
     # Import segmentation model registry
     from segmentation_pipeline.models import get_model, ModelConfig
 
     images = list_images(args.images)
     os.makedirs(args.output, exist_ok=True)
+    # Prepare CSV summary path
+    import csv
+    summary_csv = Path(args.output) / "phase1_summary.csv"
+    summary_rows = []
 
     # Load default config
     config = create_default_config()
@@ -88,8 +88,32 @@ def main():
     print(f"Using device: {gpu_mgr.device}")
 
     # Instantiate segmentation model
-    model_cfg = ModelConfig(device=str(gpu_mgr.device) if gpu_mgr.device else None)
+    # Allow passing model-specific extra params as JSON string or file
+    model_extra = {}
+    if args.model_params:
+        import json as _json
+        try:
+            # If args.model_params is a path to a file, load it
+            pth = Path(args.model_params)
+            if pth.exists():
+                with open(pth, "r") as _f:
+                    model_extra = _json.load(_f)
+            else:
+                model_extra = _json.loads(args.model_params)
+        except Exception as e:
+            print(f"Failed to parse --model-params: {e}")
+            return
+
+    model_cfg = ModelConfig(device=str(gpu_mgr.device) if gpu_mgr.device else None, extra_params=model_extra)
     try:
+        # allow user to list models first
+        if args.list_models:
+            from segmentation_pipeline.models import list_available_models
+            print("Available segmentation models:")
+            for m in list_available_models():
+                print(" - ", m)
+            return
+
         seg_model = get_model(args.model, model_cfg)
     except Exception as e:
         print(f"Failed to create segmentation model '{args.model}': {e}")
@@ -122,6 +146,19 @@ def main():
 
             graph = builder.build_hierarchy(parts)
 
+            # Collect summary info for this image
+            summary = graph.get_summary()
+            summary_row = {
+                "image": img_path,
+                "num_nodes": int(summary.get("num_nodes", 0)),
+                "num_edges": int(summary.get("num_edges", 0)),
+                "depth": int(summary.get("depth", 0)),
+                "has_root": bool(summary.get("has_root", False)),
+                "root_id": graph.root or "",
+                "nodes_per_level": json.dumps(summary.get("nodes_per_level", {})),
+            }
+            summary_rows.append(summary_row)
+
             stem = Path(img_path).stem
             out_prefix = Path(args.output) / stem
 
@@ -130,6 +167,23 @@ def main():
                 with open(json_path, "w") as f:
                     f.write(graph.to_json())
                 print(f"Saved graph: {json_path}")
+
+                # Also save a graph visualization (NetworkX + Matplotlib)
+                try:
+                    overlay_img, fig = plot_parse_tree(graph, image=None, show_overlay=False)
+                except Exception:
+                    # If the helper requires an image to render overlays, fall back to plotting without overlay
+                    overlay_img, fig = plot_parse_tree(graph, image=None, show_overlay=False)
+
+                if fig is not None:
+                    graph_img_path = str(out_prefix.with_suffix(".graph.png"))
+                    fig.savefig(graph_img_path, bbox_inches="tight")
+                    try:
+                        import matplotlib.pyplot as plt
+                        plt.close(fig)
+                    except Exception:
+                        pass
+                    print(f"Saved graph visualization: {graph_img_path}")
 
             if args.save_overlay:
                 # Save overlay of all masks on image
@@ -147,6 +201,27 @@ def main():
                     print(f"Saved overlay: {overlay_path}")
 
     print("Phase 1 run complete")
+
+    # Write summary CSV (append if exists)
+    if summary_rows:
+        fieldnames = [
+            "image",
+            "num_nodes",
+            "num_edges",
+            "depth",
+            "has_root",
+            "root_id",
+            "nodes_per_level",
+        ]
+        write_header = not summary_csv.exists()
+        with open(summary_csv, "a", newline="") as csvf:
+            writer = csv.DictWriter(csvf, fieldnames=fieldnames)
+            if write_header:
+                writer.writeheader()
+            for row in summary_rows:
+                writer.writerow(row)
+
+        print(f"Saved summary CSV: {summary_csv}")
 
 
 if __name__ == "__main__":
