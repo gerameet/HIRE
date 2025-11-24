@@ -26,11 +26,25 @@ def add_scripts_to_path():
 
 def parse_args():
     p = argparse.ArgumentParser(description="Run Phase 1 hierarchical pipeline")
-    p.add_argument("--images", required=True, help="Image file or directory containing images")
-    p.add_argument("--model", default="dummy", help="Segmentation model name (registered)")
-    p.add_argument("--list-models", action="store_true", help="List available segmentation models and exit")
-    p.add_argument("--model-params", default=None, help="JSON string or path to JSON file with model extra params (e.g. '{\"num_masks\":5}')")
-    p.add_argument("--output", default="experiment-1/output/phase1", help="Output directory")
+    p.add_argument(
+        "--images", required=True, help="Image file or directory containing images"
+    )
+    p.add_argument(
+        "--model", default="dummy", help="Segmentation model name (registered)"
+    )
+    p.add_argument(
+        "--list-models",
+        action="store_true",
+        help="List available segmentation models and exit",
+    )
+    p.add_argument(
+        "--model-params",
+        default=None,
+        help="JSON string or path to JSON file with model extra params (e.g. '{\"num_masks\":5}')",
+    )
+    p.add_argument(
+        "--output", default="experiment-1/output/phase1", help="Output directory"
+    )
     p.add_argument("--device", default=None, help="Device string, e.g. cuda:0 or cpu")
     p.add_argument(
         "--save-overlay", action="store_true", help="Save mask overlay images"
@@ -71,6 +85,7 @@ def main():
     os.makedirs(args.output, exist_ok=True)
     # Prepare CSV summary path
     import csv
+
     summary_csv = Path(args.output) / "phase1_summary.csv"
     summary_rows = []
 
@@ -92,6 +107,7 @@ def main():
     model_extra = {}
     if args.model_params:
         import json as _json
+
         try:
             # If args.model_params is a path to a file, load it
             pth = Path(args.model_params)
@@ -104,11 +120,14 @@ def main():
             print(f"Failed to parse --model-params: {e}")
             return
 
-    model_cfg = ModelConfig(device=str(gpu_mgr.device) if gpu_mgr.device else None, extra_params=model_extra)
+    model_cfg = ModelConfig(
+        device=str(gpu_mgr.device) if gpu_mgr.device else None, extra_params=model_extra
+    )
     try:
         # allow user to list models first
         if args.list_models:
             from segmentation_pipeline.models import list_available_models
+
             print("Available segmentation models:")
             for m in list_available_models():
                 print(" - ", m)
@@ -170,16 +189,21 @@ def main():
 
                 # Also save a graph visualization (NetworkX + Matplotlib)
                 try:
-                    overlay_img, fig = plot_parse_tree(graph, image=None, show_overlay=False)
+                    overlay_img, fig = plot_parse_tree(
+                        graph, image=None, show_overlay=False
+                    )
                 except Exception:
                     # If the helper requires an image to render overlays, fall back to plotting without overlay
-                    overlay_img, fig = plot_parse_tree(graph, image=None, show_overlay=False)
+                    overlay_img, fig = plot_parse_tree(
+                        graph, image=None, show_overlay=False
+                    )
 
                 if fig is not None:
                     graph_img_path = str(out_prefix.with_suffix(".graph.png"))
                     fig.savefig(graph_img_path, bbox_inches="tight")
                     try:
                         import matplotlib.pyplot as plt
+
                         plt.close(fig)
                     except Exception:
                         pass
