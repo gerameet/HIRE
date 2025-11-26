@@ -176,7 +176,9 @@ class SegmentationDiscoveryAdapter:
         self.config = config or {}
         self.adapter = SegmentationAdapter(config)
 
-    def discover_parts(self, image: np.ndarray, prompts: Dict[str, Any] = None) -> List[Part]:
+    def discover_parts(
+        self, image: np.ndarray, prompts: Dict[str, Any] = None
+    ) -> List[Part]:
         """Discover parts using existing segmentation model.
 
         Args:

@@ -49,7 +49,7 @@ class Mask2FormerSegmentationModel(SegmentationModel):
         )
         # If model_type is provided, we could use it to select a default checkpoint
         # but for now we rely on explicit checkpoint or default
-        
+
         device = get_device(self.config.device)
 
         self.processor = Mask2FormerImageProcessor.from_pretrained(checkpoint)

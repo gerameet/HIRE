@@ -41,7 +41,7 @@ def list_images(path: str) -> List[str]:
 def cmd_process(args):
     """Run the processing pipeline."""
     add_scripts_to_path()
-    
+
     # Import local packages
     from hierarchical_pipeline.config import (
         create_default_config,
@@ -50,8 +50,16 @@ def cmd_process(args):
     from hierarchical_pipeline.utils.gpu import GPUManager
     from hierarchical_pipeline.adapters.segmentation import SegmentationDiscoveryAdapter
     from hierarchical_pipeline.core.builder import BottomUpHierarchyBuilder
-    from hierarchical_pipeline.visualization import overlay_masks, plot_parse_tree, plot_interactive_graph
-    from segmentation_pipeline.models import get_model, ModelConfig, list_available_models
+    from hierarchical_pipeline.visualization import (
+        overlay_masks,
+        plot_parse_tree,
+        plot_interactive_graph,
+    )
+    from segmentation_pipeline.models import (
+        get_model,
+        ModelConfig,
+        list_available_models,
+    )
     from hierarchical_pipeline.core.analysis import HierarchyMetrics
 
     if args.list_models:
@@ -62,7 +70,7 @@ def cmd_process(args):
 
     images = list_images(args.images)
     os.makedirs(args.output, exist_ok=True)
-    
+
     # Prepare CSV summary path
     summary_csv = Path(args.output) / "phase1_summary.csv"
     summary_rows = []
@@ -97,9 +105,9 @@ def cmd_process(args):
         device=str(gpu_mgr.device) if gpu_mgr.device else None,
         model_type=args.model_type,
         checkpoint=args.checkpoint,
-        extra_params=model_extra
+        extra_params=model_extra,
     )
-    
+
     try:
         seg_model = get_model(args.model, model_cfg)
     except Exception as e:
@@ -137,7 +145,7 @@ def cmd_process(args):
                     p.metadata.setdefault("image_size", (img.width, img.height))
 
                 graph = builder.build_hierarchy(parts)
-                
+
                 # Validate graph
                 errors = graph.validate()
                 if errors:
@@ -160,11 +168,14 @@ def cmd_process(args):
                 if args.save_viz:
                     # Static plot
                     try:
-                        overlay_img, fig = plot_parse_tree(graph, image=None, show_overlay=False)
+                        overlay_img, fig = plot_parse_tree(
+                            graph, image=None, show_overlay=False
+                        )
                         if fig is not None:
                             graph_img_path = str(out_prefix.with_suffix(".graph.png"))
                             fig.savefig(graph_img_path, bbox_inches="tight")
                             import matplotlib.pyplot as plt
+
                             plt.close(fig)
                     except Exception as e:
                         print(f"Static plot failed: {e}")
@@ -179,25 +190,32 @@ def cmd_process(args):
                     # Overlay
                     if parts:
                         import numpy as np
+
                         img_np = np.array(img)
-                        
+
                         # 1. Baseline Segmentation (just masks)
-                        from hierarchical_pipeline.visualization import overlay_masks_with_ids
+                        from hierarchical_pipeline.visualization import (
+                            overlay_masks_with_ids,
+                        )
+
                         masks = [p.mask for p in parts]
                         baseline = overlay_masks(img_np, masks)
                         from PIL import Image as PILImage
+
                         baseline_pil = PILImage.fromarray(baseline)
                         baseline_path = str(out_prefix.with_suffix(".baseline.png"))
                         baseline_pil.save(baseline_path)
                         print(f"Saved baseline: {baseline_path}")
-                        
+
                         # 2. Hierarchical Overlay with IDs
                         # We use the same parts list but now annotated with IDs
                         # Note: In a full hierarchy, we might want to visualize different levels
                         # For now, we visualize the leaf parts (which are what we have in 'parts')
                         # and label them with their IDs.
                         hierarchy_viz = overlay_masks_with_ids(img_np, parts)
-                        hierarchy_path = str(out_prefix.with_suffix(".hierarchy_overlay.png"))
+                        hierarchy_path = str(
+                            out_prefix.with_suffix(".hierarchy_overlay.png")
+                        )
                         hierarchy_viz.save(hierarchy_path)
                         print(f"Saved hierarchy overlay: {hierarchy_path}")
 
@@ -220,20 +238,22 @@ def cmd_visualize(args):
     add_scripts_to_path()
     from hierarchical_pipeline.core.data import ParseGraph
     from hierarchical_pipeline.visualization import plot_interactive_graph
-    
+
     input_path = Path(args.input)
     if not input_path.exists():
         print(f"Input path not found: {input_path}")
         return
-        
-    files = list(input_path.glob("*.graph.json")) if input_path.is_dir() else [input_path]
+
+    files = (
+        list(input_path.glob("*.graph.json")) if input_path.is_dir() else [input_path]
+    )
     os.makedirs(args.output, exist_ok=True)
-    
+
     for f in files:
         try:
             with open(f, "r") as fp:
                 graph = ParseGraph.from_json(fp.read())
-            
+
             out_path = Path(args.output) / f.with_suffix(".html").name
             plot_interactive_graph(graph, output_path=str(out_path))
             print(f"Generated {out_path}")
@@ -246,10 +266,12 @@ def cmd_analyze(args):
     add_scripts_to_path()
     from hierarchical_pipeline.core.data import ParseGraph
     from hierarchical_pipeline.core.analysis import HierarchyMetrics
-    
+
     input_path = Path(args.input)
-    files = list(input_path.glob("*.graph.json")) if input_path.is_dir() else [input_path]
-    
+    files = (
+        list(input_path.glob("*.graph.json")) if input_path.is_dir() else [input_path]
+    )
+
     summary_rows = []
     for f in files:
         try:
@@ -259,10 +281,11 @@ def cmd_analyze(args):
             summary_rows.append({"file": f.name, **metrics})
         except Exception as e:
             print(f"Failed to analyze {f}: {e}")
-            
+
     if summary_rows:
         try:
             import pandas as pd
+
             df = pd.DataFrame(summary_rows)
             print(df.describe())
             if args.output:
@@ -286,9 +309,11 @@ def cmd_compare(args):
     from hierarchical_pipeline.core.analysis import HierarchyMetrics
     from hierarchical_pipeline.core.data import ParseGraph
     import pandas as pd
+
     try:
         import matplotlib.pyplot as plt
         import seaborn as sns
+
         HAS_PLOTTING = True
     except ImportError:
         HAS_PLOTTING = False
@@ -298,24 +323,24 @@ def cmd_compare(args):
     if not input_dir.exists():
         print(f"Input directory not found: {input_dir}")
         return
-        
+
     # Assume input directory structure: output/phase1/<model_name>/<image>.graph.json
     # Or maybe we just look for all graph.json files recursively and extract model from path?
     # For simplicity, let's assume the user ran 'process' multiple times with different output dirs
     # and passed a list of directories to compare.
-    
+
     # Actually, let's change the args to accept multiple input directories
     # usage: compare --inputs output/model1 output/model2 --labels model1 model2
-    
+
     inputs = args.inputs
     labels = args.labels
-    
+
     if len(inputs) != len(labels):
         print("Error: Number of inputs must match number of labels")
         return
-        
+
     data = []
-    
+
     for inp, label in zip(inputs, labels):
         inp_path = Path(inp)
         files = list(inp_path.glob("*.graph.json"))
@@ -324,26 +349,28 @@ def cmd_compare(args):
                 with open(f, "r") as fp:
                     graph = ParseGraph.from_json(fp.read())
                 metrics = HierarchyMetrics.get_all_metrics(graph)
-                data.append({"model": label, "image": f.stem.replace(".graph", ""), **metrics})
+                data.append(
+                    {"model": label, "image": f.stem.replace(".graph", ""), **metrics}
+                )
             except Exception as e:
                 print(f"Error reading {f}: {e}")
-                
+
     if not data:
         print("No data found to compare.")
         return
-        
+
     df = pd.DataFrame(data)
     print("\nComparison Summary:")
     print(df.groupby("model").mean(numeric_only=True))
-    
+
     if args.output:
         os.makedirs(args.output, exist_ok=True)
         df.to_csv(Path(args.output) / "comparison.csv", index=False)
-        
+
         if HAS_PLOTTING:
             # Generate comparison plots
             metrics_to_plot = ["depth", "branching_factor", "balance", "num_nodes"]
-            
+
             for metric in metrics_to_plot:
                 try:
                     plt.figure(figsize=(10, 6))
@@ -353,49 +380,57 @@ def cmd_compare(args):
                     plt.close()
                 except Exception as e:
                     print(f"Failed to plot {metric}: {e}")
-            
+
         print(f"Saved comparison results to {args.output}")
 
 
 def main():
     parser = argparse.ArgumentParser(description="HIRE Phase 1 CLI")
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
-    
+
     # Process command
     p_process = subparsers.add_parser("process", help="Run segmentation pipeline")
     p_process.add_argument("--images", required=True, help="Input images")
     p_process.add_argument("--model", default="dummy", help="Segmentation model")
     p_process.add_argument("--model-type", help="Model type (e.g. vit_h, vit_b)")
     p_process.add_argument("--checkpoint", help="Model checkpoint path or ID")
-    p_process.add_argument("--text-prompt", nargs="+", help="Text prompts for models like CLIPSeg")
+    p_process.add_argument(
+        "--text-prompt", nargs="+", help="Text prompts for models like CLIPSeg"
+    )
     p_process.add_argument("--list-models", action="store_true", help="List models")
     p_process.add_argument("--model-params", help="Model parameters (JSON)")
     p_process.add_argument("--output", default="output/phase1", help="Output directory")
     p_process.add_argument("--device", help="Device (cuda/cpu)")
-    p_process.add_argument("--save-viz", action="store_true", default=True, help="Save visualizations")
+    p_process.add_argument(
+        "--save-viz", action="store_true", default=True, help="Save visualizations"
+    )
     p_process.set_defaults(func=cmd_process)
-    
+
     # Visualize command
     p_viz = subparsers.add_parser("visualize", help="Visualize existing graphs")
     p_viz.add_argument("--input", required=True, help="Input directory or file")
     p_viz.add_argument("--output", default="output/viz", help="Output directory")
     p_viz.set_defaults(func=cmd_visualize)
-    
+
     # Analyze command
     p_analyze = subparsers.add_parser("analyze", help="Analyze metrics")
     p_analyze.add_argument("--input", required=True, help="Input directory or file")
     p_analyze.add_argument("--output", help="Output CSV file")
     p_analyze.set_defaults(func=cmd_analyze)
-    
+
     # Compare command
     p_compare = subparsers.add_parser("compare", help="Compare models")
-    p_compare.add_argument("--inputs", nargs="+", required=True, help="List of input directories")
-    p_compare.add_argument("--labels", nargs="+", required=True, help="List of model labels")
+    p_compare.add_argument(
+        "--inputs", nargs="+", required=True, help="List of input directories"
+    )
+    p_compare.add_argument(
+        "--labels", nargs="+", required=True, help="List of model labels"
+    )
     p_compare.add_argument("--output", help="Output directory for comparison results")
     p_compare.set_defaults(func=cmd_compare)
-    
+
     args = parser.parse_args()
-    
+
     if hasattr(args, "func"):
         args.func(args)
     else:

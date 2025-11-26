@@ -39,11 +39,11 @@ class Part:
         # Ensure mask is bool or uint8
         if self.mask.dtype not in [np.bool_, np.uint8]:
             self.mask = (self.mask > 0).astype(np.uint8)
-            
+
         # Validate bbox
         if len(self.bbox) != 4:
             raise ValueError(f"BBox must be (x1, y1, x2, y2), got {self.bbox}")
-        
+
         x1, y1, x2, y2 = self.bbox
         if x1 > x2 or y1 > y2:
             # Auto-fix or raise? Let's raise for now to catch bugs
@@ -137,27 +137,27 @@ class ParseGraph:
 
     def validate(self) -> List[str]:
         """Validate graph consistency.
-        
+
         Returns:
             List of error messages (empty if valid).
         """
         errors = []
-        
+
         # Check root
         if self.root and self.root not in self.nodes:
             errors.append(f"Root node {self.root} not found in nodes")
-            
+
         # Check edges
         for edge in self.edges:
             if edge.parent_id not in self.nodes:
                 errors.append(f"Edge parent {edge.parent_id} not found")
             if edge.child_id not in self.nodes:
                 errors.append(f"Edge child {edge.child_id} not found")
-                
+
         # Check cycles (simple DFS)
         visited = set()
         path = set()
-        
+
         def visit(node_id):
             visited.add(node_id)
             path.add(node_id)
@@ -167,11 +167,11 @@ class ParseGraph:
                 if child_id not in visited:
                     visit(child_id)
             path.remove(node_id)
-            
+
         for node_id in self.nodes:
             if node_id not in visited:
                 visit(node_id)
-                
+
         return errors
 
     def add_node(self, node: Node) -> None:

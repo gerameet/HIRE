@@ -25,8 +25,10 @@ class SAMSegmentationModel(PromptableSegmentationModel):
         self.model_type = config.model_type or "vit_b"
         valid_types = ["vit_b", "vit_l", "vit_h"]
         if self.model_type not in valid_types:
-             raise ValueError(f"Invalid SAM model_type '{self.model_type}'. Must be one of {valid_types}")
-             
+            raise ValueError(
+                f"Invalid SAM model_type '{self.model_type}'. Must be one of {valid_types}"
+            )
+
         self.use_automatic = config.extra_params.get("use_automatic", True)
         self.sam_model = None
         self.predictor = None
