@@ -176,17 +176,18 @@ class SegmentationDiscoveryAdapter:
         self.config = config or {}
         self.adapter = SegmentationAdapter(config)
 
-    def discover_parts(self, image: np.ndarray) -> List[Part]:
+    def discover_parts(self, image: np.ndarray, prompts: Dict[str, Any] = None) -> List[Part]:
         """Discover parts using existing segmentation model.
 
         Args:
             image: Input image as numpy array (H, W, C)
+            prompts: Optional prompts for segmentation (e.g. text, points)
 
         Returns:
             List of Part objects
         """
         # Run segmentation
-        segments = self.model.segment(image)
+        segments = self.model.segment(image, prompts=prompts)
 
         # Convert segments to parts
         parts = []

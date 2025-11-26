@@ -1,7 +1,15 @@
 numpy
 Pillow
 matplotlib
+seaborn
 networkx
 # Optional (install for GPU support)
 torch
 torchvision
+
+segment_anything
+ultralytics
+plotly
+typer
+pandas
+seaborn

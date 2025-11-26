@@ -6,3 +6,5 @@ env/
 WARP.md
 __pycache__
 *.pyc
+
+output/*
