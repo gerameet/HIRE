@@ -11,11 +11,15 @@ Also includes hyperbolic projection utilities for hierarchical representation.
 
 from .methods import DummyEmbedding, DINOEmbedding, CLIPEmbedding, MAEEmbedding
 from .cache import EmbeddingCache
-from .hyperbolic import HyperbolicProjection, HyperbolicDistance, verify_hyperbolic_constraints
+from .hyperbolic import (
+    HyperbolicProjection,
+    HyperbolicDistance,
+    verify_hyperbolic_constraints,
+)
 
 __all__ = [
     "DummyEmbedding",
-    "DINOEmbedding", 
+    "DINOEmbedding",
     "CLIPEmbedding",
     "MAEEmbedding",
     "EmbeddingCache",
@@ -23,4 +27,3 @@ __all__ = [
     "HyperbolicDistance",
     "verify_hyperbolic_constraints",
 ]
-

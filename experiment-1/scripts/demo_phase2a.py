@@ -49,7 +49,9 @@ images = [image] * 5
 masks = [mask] * 5
 batch_embeddings = emb_method.embed_batch(images, masks)
 print(f"  ✓ Batch shape: {batch_embeddings.shape}")
-print(f"  ✓ All normalized: {np.allclose(np.linalg.norm(batch_embeddings, axis=1), 1.0)}")
+print(
+    f"  ✓ All normalized: {np.allclose(np.linalg.norm(batch_embeddings, axis=1), 1.0)}"
+)
 
 # Test caching
 print("\n[4/5] Testing embedding cache...")

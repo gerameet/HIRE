@@ -11,7 +11,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 
 from hierarchical_pipeline.embedding import DummyEmbedding
-from hierarchical_pipeline.evaluation.retrieval import PartRetrievalEngine, precision_at_k, recall_at_k
+from hierarchical_pipeline.evaluation.retrieval import (
+    PartRetrievalEngine,
+    precision_at_k,
+    recall_at_k,
+)
 import numpy as np
 
 print("=" * 70)
@@ -22,10 +26,12 @@ print("=" * 70)
 print("\n[1/4] Creating test parts with embeddings...")
 embedding_method = DummyEmbedding({"embedding_dim": 768, "seed": 42})
 
+
 class DummyPart:
     def __init__(self, id, embedding):
         self.id = id
         self.embedding = embedding
+
 
 # Generate 20 parts
 parts = []
@@ -40,7 +46,9 @@ print(f"  ✓ Created {len(parts)} parts")
 
 # Build retrieval index
 print("\n[2/4] Building retrieval index...")
-engine = PartRetrievalEngine(embedding_dim=768, use_faiss=False)  # Use brute-force for demo
+engine = PartRetrievalEngine(
+    embedding_dim=768, use_faiss=False
+)  # Use brute-force for demo
 engine.add_parts(parts)
 
 stats = engine.get_stats()
