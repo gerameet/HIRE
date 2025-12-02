@@ -124,6 +124,31 @@ def cmd_process(args):
             },
         )
 
+        # Initialize embedding method if specified
+        embedding_method = None
+        if args.embedding_method:
+            from hierarchical_pipeline.embedding import DummyEmbedding, DINOEmbedding, CLIPEmbedding, MAEEmbedding
+            
+            emb_config = {
+                "device": str(gpu_mgr.device) if gpu_mgr.device else "cpu",
+                "cache_dir": args.embedding_cache if args.embedding_cache else "cache/embeddings",
+                "use_cache": True,
+            }
+            
+            if args.embedding_method.lower() == "dummy":
+                embedding_method = DummyEmbedding(emb_config)
+            elif args.embedding_method.lower() in ["dino", "dinov2"]:
+                embedding_method = DINOEmbedding(emb_config)
+            elif args.embedding_method.lower() == "clip":
+                embedding_method = CLIPEmbedding(emb_config)
+            elif args.embedding_method.lower() == "mae":
+                embedding_method = MAEEmbedding(emb_config)
+            else:
+                print(f"Unknown embedding method: {args.embedding_method}")
+                return
+            
+            print(f"Using embedding method: {args.embedding_method}")
+
         builder = BottomUpHierarchyBuilder(config=config.hierarchy.__dict__)
 
         from PIL import Image
@@ -143,6 +168,15 @@ def cmd_process(args):
                 for p in parts:
                     p.metadata.setdefault("image_path", img_path)
                     p.metadata.setdefault("image_size", (img.width, img.height))
+
+                # Generate embeddings if embedding method is specified
+                if embedding_method:
+                    import numpy as np
+                    img_np = np.array(img)
+                    print(f"  Generating embeddings for {len(parts)} parts...")
+                    for p in parts:
+                        p.embedding = embedding_method.embed_part(img_np, p.mask)
+                    print(f"  Embeddings generated (dim={parts[0].embedding.shape[0] if parts else 'N/A'})")
 
                 graph = builder.build_hierarchy(parts)
 
@@ -399,11 +433,15 @@ def main():
     )
     p_process.add_argument("--list-models", action="store_true", help="List models")
     p_process.add_argument("--model-params", help="Model parameters (JSON)")
+    p_process.add_argument("--embedding-method", help="Method for generating embeddings (e.g., clip, dinov2)")
+    p_process.add_argument("--embedding-cache", help="Path to cache embeddings")
     p_process.add_argument("--output", default="output/phase1", help="Output directory")
     p_process.add_argument("--device", help="Device (cuda/cpu)")
-    p_process.add_argument(
-        "--save-viz", action="store_true", default=True, help="Save visualizations"
-    )
+    p_process.add_argument("--save-viz", action="store_true", default=True, help="Save visualizations")
+    p_process.add_argument("--use-embedding-hierarchy", action="store_true",
+                          help="Use embedding similarity in hierarchy construction")
+    p_process.add_argument("--semantic-weight", type=float, default=0.3,
+                          help="Weight for semantic similarity (0-1, default 0.3)")
     p_process.set_defaults(func=cmd_process)
 
     # Visualize command
