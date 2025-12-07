@@ -1,0 +1,424 @@
+#!/usr/bin/env python3
+"""Unified Experiment CLI for experiment-1 research framework.
+
+This is the single entry point for all experiment operations:
+- prepare: Data preparation (segmentation only)
+- run: Full pipeline (segmentation → hierarchy → embeddings)
+- evaluate: Run benchmarks on existing experiments
+- compare: Compare multiple experiment runs
+- list: List all tracked experiments
+- show: Show details of a specific experiment
+- clean: Clean up experiments or outputs
+
+Usage:
+    experiment run --config configs/default_experiment.yaml
+    experiment run --quick --data.max_images 3
+    experiment evaluate --experiment-id exp_20231207_143022_a3f8
+    experiment compare exp_A exp_B exp_C
+    experiment list --status completed
+"""
+
+import sys
+import argparse
+from pathlib import Path
+
+# Add scripts to Python path
+sys.path.insert(0, str(Path(__file__).parent))
+
+from hierarchical_pipeline.tracking import ExperimentRunner, ExperimentTracker, ResultsComparator
+from hierarchical_pipeline.config import load_config, create_default_config
+import yaml
+import json
+
+
+def load_config_with_overrides(config_path: str, overrides: list) -> dict:
+    """Load YAML config and apply CLI overrides.
+    
+    Args:
+        config_path: Path to YAML config file
+        overrides: List of override strings in format "key.subkey=value"
+        
+    Returns:
+        Configuration dictionary with overrides applied
+    """
+    # Load base config
+    if config_path:
+        config_file = Path(config_path)
+        if config_file.exists():
+            with open(config_file, "r") as f:
+                config = yaml.safe_load(f) or {}
+        else:
+            print(f"Warning: Config file not found: {config_path}")
+            config = {}
+    else:
+        config = {}
+    
+    # Apply overrides
+    for override in overrides:
+        if "=" not in override:
+            print(f"Warning: Invalid override format (expected key=value): {override}")
+            continue
+        
+        key_path, value = override.split("=", 1)
+        keys = key_path.split(".")
+        
+        # Parse value
+        try:
+            # Try to parse as JSON for numbers, booleans, lists
+            parsed_value = json.loads(value)
+        except json.JSONDecodeError:
+            # Keep as string if not valid JSON
+            parsed_value = value
+        
+        # Navigate to nested key and set value
+        current = config
+        for key in keys[:-1]:
+            if key not in current:
+                current[key] = {}
+            current = current[key]
+        
+        current[keys[-1]] = parsed_value
+    
+    return config
+
+
+def cmd_run(args):
+    """Run full experiment pipeline."""
+    print("=" * 70)
+    print("EXPERIMENT RUN")
+    print("=" * 70)
+    
+    # Load config with overrides
+    overrides = args.override or []
+    
+    # Add quick mode overrides if specified
+    if args.quick:
+        overrides.extend([
+            "experiment.quick_mode=true",
+            "data.max_images=3",
+            "segmentation.model=dummy",
+            "embedding.method=dummy"
+        ])
+    
+    config = load_config_with_overrides(args.config, overrides)
+    
+    # Set experiment name if provided
+    if args.name:
+        config.setdefault("experiment", {})["name"] = args.name
+    
+    # Set device if provided
+    if args.device:
+        config.setdefault("gpu", {})["device"] = args.device
+    
+    print(f"\nExperiment name: {config.get('experiment', {}).get('name', 'unnamed')}")
+    print(f"Configuration: {args.config}")
+    if overrides:
+        print(f"Overrides: {len(overrides)} applied")
+    
+    # Create runner and execute
+    runner = ExperimentRunner(config)
+    
+    try:
+        run = runner.run_full_pipeline()
+        
+        print("\n" + "=" * 70)
+        print("✓ EXPERIMENT COMPLETED")
+        print("=" * 70)
+        print(f"Experiment ID: {run.experiment_id}")
+        print(f"Output directory: {run.output_dir}")
+        print(f"Duration: {run.duration_seconds:.2f}s")
+        print(f"Images processed: {run.num_images}")
+        print(f"Parts discovered: {run.num_parts}")
+        
+        if run.metrics:
+            print("\nMetrics:")
+            for key, value in sorted(run.metrics.items()):
+                if isinstance(value, float):
+                    print(f"  {key}: {value:.4f}")
+                else:
+                    print(f"  {key}: {value}")
+        
+    except Exception as e:
+        print(f"\n✗ EXPERIMENT FAILED: {e}")
+        if args.verbose:
+            import traceback
+            traceback.print_exc()
+        sys.exit(1)
+
+
+def cmd_evaluate(args):
+    """Run evaluation on existing experiment."""
+    print("=" * 70)
+    print("EVALUATION")
+    print("=" * 70)
+    
+    tracker = ExperimentTracker()
+    
+    # Load experiment
+    run = tracker.load_run(args.experiment_id)
+    
+    if not run:
+        print(f"✗ Experiment not found: {args.experiment_id}")
+        sys.exit(1)
+    
+    print(f"Evaluating experiment: {run.experiment_name}")
+    print(f"Original run: {run.timestamp}")
+    
+    # TODO: Implement evaluation on existing results
+    print("\n✗ Evaluation of existing experiments not yet implemented")
+    print("Use 'experiment run' with evaluation.enabled=true instead")
+
+
+def cmd_compare(args):
+    """Compare multiple experiments."""
+    print("=" * 70)
+    print("EXPERIMENT COMPARISON")
+    print("=" * 70)
+    
+    tracker = ExperimentTracker()
+    comparator = ResultsComparator(tracker)
+    
+    experiment_ids = args.experiments
+    
+    print(f"\nComparing {len(experiment_ids)} experiments:")
+    for eid in experiment_ids:
+        run = tracker.load_run(eid)
+        if run:
+            print(f"  - {eid}: {run.experiment_name} ({run.status})")
+        else:
+            print(f"  - {eid}: NOT FOUND")
+    
+    # Get comparison
+    comparison = comparator.compare_metrics(experiment_ids, metrics=args.metrics)
+    
+    if not comparison:
+        print("\n✗ No valid experiments found for comparison")
+        sys.exit(1)
+    
+    # Print table
+    print("\n" + "=" * 70)
+    print("METRICS COMPARISON")
+    print("=" * 70)
+    
+    metric_names = comparison["metric_names"]
+    
+    # Header
+    header = f"{'Experiment':<30} {'Status':<12}"
+    for m in metric_names[:5]:  # Limit displayed metrics
+        header += f" {m:<15}"
+    print(header)
+    print("-" * 70)
+    
+    # Rows
+    for exp in comparison["experiments"]:
+        row = f"{exp['name'][:28]:<30} {exp['status']:<12}"
+        for m in metric_names[:5]:
+            value = exp['metrics'].get(m)
+            if value is not None:
+                if isinstance(value, float):
+                    row += f" {value:<15.4f}"
+                else:
+                    row += f" {str(value):<15}"
+            else:
+                row += f" {'N/A':<15}"
+        print(row)
+    
+    # Save outputs if requested
+    if args.output:
+        output_dir = Path(args.output)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # CSV
+        csv_path = output_dir / "comparison.csv"
+        comparator.export_comparison_csv(experiment_ids, str(csv_path), args.metrics)
+        print(f"\n✓ CSV saved to: {csv_path}")
+        
+        # Plots
+        try:
+            comparator.generate_comparison_plots(experiment_ids, str(output_dir), args.metrics)
+            print(f"✓ Plots saved to: {output_dir}")
+        except Exception as e:
+            print(f"⚠ Could not generate plots: {e}")
+
+
+def cmd_list(args):
+    """List all tracked experiments."""
+    tracker = ExperimentTracker()
+    
+    # Query with filters
+    runs = tracker.query_runs(
+        name_filter=args.name,
+        status_filter=args.status
+    )
+    
+    if not runs:
+        print("No experiments found matching criteria")
+        return
+    
+    print(f"Found {len(runs)} experiment(s):\n")
+    
+    # Print table
+    print(f"{'ID':<25} {'Name':<25} {'Status':<12} {'Date':<20} {'Images':<8}")
+    print("-" * 90)
+    
+    for run in sorted(runs, key=lambda r: r.timestamp, reverse=True):
+        # Truncate ID for display
+        short_id = run.experiment_id[:23]
+        timestamp = run.timestamp.split("T")[0] if "T" in run.timestamp else run.timestamp[:19]
+        
+        print(f"{short_id:<25} {run.experiment_name[:23]:<25} {run.status:<12} {timestamp:<20} {run.num_images:<8}")
+
+
+def cmd_show(args):
+    """Show details of a specific experiment."""
+    tracker = ExperimentTracker()
+    run = tracker.load_run(args.experiment_id)
+    
+    if not run:
+        print(f"✗ Experiment not found: {args.experiment_id}")
+        sys.exit(1)
+    
+    print("=" * 70)
+    print("EXPERIMENT DETAILS")
+    print("=" * 70)
+    print(f"\nID: {run.experiment_id}")
+    print(f"Name: {run.experiment_name}")
+    print(f"Status: {run.status}")
+    print(f"Timestamp: {run.timestamp}")
+    print(f"Duration: {run.duration_seconds:.2f}s")
+    print(f"Device: {run.device}")
+    if run.git_commit:
+        print(f"Git commit: {run.git_commit}")
+    print(f"\nOutput directory: {run.output_dir}")
+    print(f"Images processed: {run.num_images}")
+    print(f"Parts discovered: {run.num_parts}")
+    
+    if run.metrics:
+        print("\nMetrics:")
+        for key, value in sorted(run.metrics.items()):
+            if isinstance(value, float):
+                print(f"  {key}: {value:.4f}")
+            else:
+                print(f"  {key}: {value}")
+    
+    if args.config:
+        print("\nConfiguration:")
+        print(json.dumps(run.config, indent=2))
+
+
+def cmd_clean(args):
+    """Clean up experiments or outputs."""
+    tracker = ExperimentTracker()
+    
+    if args.experiment_id:
+        # Clean specific experiment
+        run = tracker.load_run(args.experiment_id)
+        if not run:
+            print(f"✗ Experiment not found: {args.experiment_id}")
+            sys.exit(1)
+        
+        import shutil
+        output_dir = Path(run.output_dir)
+        
+        if not args.force:
+            response = input(f"Delete experiment {args.experiment_id}? (yes/no): ")
+            if response.lower() != "yes":
+                print("Cancelled")
+                return
+        
+        if output_dir.exists():
+            shutil.rmtree(output_dir)
+            print(f"✓ Deleted: {output_dir}")
+        else:
+            print(f"⚠ Directory not found: {output_dir}")
+    
+    elif args.status:
+        # Clean all experiments with specific status
+        runs = tracker.query_runs(status_filter=args.status)
+        
+        if not runs:
+            print(f"No experiments found with status: {args.status}")
+            return
+        
+        print(f"Found {len(runs)} experiments with status '{args.status}'")
+        
+        if not args.force:
+            response = input(f"Delete all {len(runs)} experiments? (yes/no): ")
+            if response.lower() != "yes":
+                print("Cancelled")
+                return
+        
+        import shutil
+        for run in runs:
+            output_dir = Path(run.output_dir)
+            if output_dir.exists():
+                shutil.rmtree(output_dir)
+                print(f"✓ Deleted: {run.experiment_id}")
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Unified Experiment CLI for experiment-1",
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    
+    subparsers = parser.add_subparsers(dest="command", help="Command to run")
+    
+    # Run command
+    p_run = subparsers.add_parser("run", help="Run full experiment pipeline")
+    p_run.add_argument("--config", default="hierarchical_pipeline/configs/default_experiment.yaml",
+                      help="Path to config file")
+    p_run.add_argument("--name", help="Experiment name")
+    p_run.add_argument("--quick", action="store_true",
+                      help="Quick test mode (3 images, dummy models)")
+    p_run.add_argument("--device", choices=["cuda", "cpu"], help="Device to use")
+    p_run.add_argument("--override", "-o", action="append",
+                      help="Override config values (e.g., -o data.max_images=10)")
+    p_run.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
+    p_run.set_defaults(func=cmd_run)
+    
+    # Evaluate command
+    p_eval = subparsers.add_parser("evaluate", help="Evaluate existing experiment")
+    p_eval.add_argument("--experiment-id", required=True, help="Experiment ID to evaluate")
+    p_eval.add_argument("--tasks", nargs="+", choices=["retrieval", "classification"],
+                       default=["retrieval"], help="Evaluation tasks")
+    p_eval.set_defaults(func=cmd_evaluate)
+    
+    # Compare command
+    p_compare = subparsers.add_parser("compare", help="Compare multiple experiments")
+    p_compare.add_argument("experiments", nargs="+", help="Experiment IDs to compare")
+    p_compare.add_argument("--metrics", nargs="+", help="Specific metrics to compare")
+    p_compare.add_argument("--output", help="Output directory for comparison results")
+    p_compare.set_defaults(func=cmd_compare)
+    
+    # List command
+    p_list = subparsers.add_parser("list", help="List tracked experiments")
+    p_list.add_argument("--name", help="Filter by name (substring match)")
+    p_list.add_argument("--status", choices=["completed", "failed", "running"],
+                       help="Filter by status")
+    p_list.set_defaults(func=cmd_list)
+    
+    # Show command
+    p_show = subparsers.add_parser("show", help="Show experiment details")
+    p_show.add_argument("experiment_id", help="Experiment ID")
+    p_show.add_argument("--config", action="store_true", help="Show full configuration")
+    p_show.set_defaults(func=cmd_show)
+    
+    # Clean command
+    p_clean = subparsers.add_parser("clean", help="Clean up experiments")
+    p_clean.add_argument("--experiment-id", help="Specific experiment to delete")
+    p_clean.add_argument("--status", help="Delete all experiments with status")
+    p_clean.add_argument("--force", "-f", action="store_true", help="Skip confirmation")
+    p_clean.set_defaults(func=cmd_clean)
+    
+    args = parser.parse_args()
+    
+    if not hasattr(args, "func"):
+        parser.print_help()
+        sys.exit(0)
+    
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()

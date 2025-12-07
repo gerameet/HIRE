@@ -3,12 +3,13 @@ Pillow
 matplotlib
 seaborn
 networkx
+pyarrow
 
 # Deep learning (required for Phase 2 embeddings)
 torch
 torchvision
-transformers>=4.30.0
-timm>=0.9.0
+transformers
+timm
 
 # Segmentation models
 segment_anything
@@ -22,9 +23,9 @@ typer
 pandas
 
 # Testing (Phase 2)
-pytest>=7.0.0
-pytest-xdist>=3.0.0
-pytest-benchmark>=4.0.0
+pytest
+pytest-xdist
+pytest-benchmark
 
 # Hyperbolic geometry (Phase 2)
-geoopt>=0.5.0
+geoopt
