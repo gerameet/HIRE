@@ -37,13 +37,13 @@ except ImportError:
 
 def extract_masked_region(image: np.ndarray, mask: np.ndarray) -> Image.Image:
     """Extract masked region from image as PIL Image.
-    
+
     Shared utility function used by all embedding methods.
-    
+
     Args:
         image: Full image (H, W, C) as numpy array
         mask: Binary mask (H, W)
-    
+
     Returns:
         PIL Image of cropped region
     """
@@ -52,17 +52,17 @@ def extract_masked_region(image: np.ndarray, mask: np.ndarray) -> Image.Image:
     if len(rows) == 0:
         # Empty mask - return small blank image
         return Image.new("RGB", (224, 224), color=(128, 128, 128))
-    
+
     y1, y2 = rows.min(), rows.max() + 1
     x1, x2 = cols.min(), cols.max() + 1
-    
+
     # Crop image to bbox
     cropped = image[y1:y2, x1:x2]
-    
+
     # Convert to PIL
     if cropped.dtype in [np.float32, np.float64]:
         cropped = (cropped * 255).astype(np.uint8)
-    
+
     return Image.fromarray(cropped)
 
 
@@ -216,7 +216,7 @@ class DINOEmbedding(EmbeddingMethod):
         # Validate inputs
         validate_image(image)
         validate_mask(mask, image.shape)
-        
+
         # Extract part image using shared utility
         part_img = extract_masked_region(image, mask)
 
@@ -362,7 +362,7 @@ class CLIPEmbedding(EmbeddingMethod):
         # Validate inputs
         validate_image(image)
         validate_mask(mask, image.shape)
-        
+
         # Extract part image using shared utility
         part_img = extract_masked_region(image, mask)
 
@@ -463,7 +463,7 @@ class MAEEmbedding(EmbeddingMethod):
         # Validate inputs
         validate_image(image)
         validate_mask(mask, image.shape)
-        
+
         # Extract part image using shared utility
         part_img = extract_masked_region(image, mask)
 
@@ -491,28 +491,30 @@ class MAEEmbedding(EmbeddingMethod):
 
 class DINOv2Embedding(EmbeddingMethod):
     """DINOv2 self-supervised ViT embedding (Meta, 2023).
-    
+
     Improved version of DINO with better representations and training.
     Supports multiple model sizes: small (85MB), base (350MB), large (1.2GB), giant (2.5GB).
     """
-    
+
     def __init__(self, config: Dict[str, Any]):
         """Initialize DINOv2 embedding generator.
-        
+
         Args:
             config: Configuration with 'model_size', 'device', etc.
         """
         super().__init__(config)
-        
+
         if not HAS_TORCH:
             raise ImportError("PyTorch required for DINOv2Embedding")
-        
+
         # Model size: 'small', 'base', 'large', 'giant'
         model_size = config.get("model_size", "base")
         valid_sizes = ["small", "base", "large", "giant"]
         if model_size not in valid_sizes:
-            raise ValueError(f"model_size must be one of {valid_sizes}, got {model_size}")
-        
+            raise ValueError(
+                f"model_size must be one of {valid_sizes}, got {model_size}"
+            )
+
         self.model_size = model_size
         self.device = config.get(
             "device", "cuda" if torch.cuda.is_available() else "cpu"
@@ -520,10 +522,10 @@ class DINOv2Embedding(EmbeddingMethod):
         self.batch_size = config.get("batch_size", 32)
         self.use_cache = config.get("use_cache", True)
         self.cache_dir = config.get("cache_dir", "cache/embeddings")
-        
+
         # Initialize cache
         self.cache = EmbeddingCache(self.cache_dir, enabled=self.use_cache)
-        
+
         # Model name mapping
         size_to_model = {
             "small": "dinov2_vits14",
@@ -532,118 +534,118 @@ class DINOv2Embedding(EmbeddingMethod):
             "giant": "dinov2_vitg14",
         }
         model_fn = size_to_model[model_size]
-        
+
         # Load model
         logger.info(f"Loading DINOv2 model: {model_fn}")
         try:
             # Load from torch hub (official DINOv2 repo)
             self.model = torch.hub.load(
-                "facebookresearch/dinov2",
-                model_fn,
-                pretrained=True
+                "facebookresearch/dinov2", model_fn, pretrained=True
             )
             self.model.eval()
             self.model.to(self.device)
-            
+
             # DINOv2 preprocessing
-            self.transform = T.Compose([
-                T.Resize(256, interpolation=T.InterpolationMode.BICUBIC),
-                T.CenterCrop(224),
-                T.ToTensor(),
-                T.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
-            ])
-            
+            self.transform = T.Compose(
+                [
+                    T.Resize(256, interpolation=T.InterpolationMode.BICUBIC),
+                    T.CenterCrop(224),
+                    T.ToTensor(),
+                    T.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225)),
+                ]
+            )
+
             # Get embedding dimension
             with torch.no_grad():
                 dummy_input = torch.randn(1, 3, 224, 224).to(self.device)
                 dummy_output = self.model(dummy_input)
                 self.embedding_dim = dummy_output.shape[-1]
-            
+
             logger.info(
                 f"DINOv2 model loaded (size={model_size}, dim={self.embedding_dim}, device={self.device})"
             )
-        
+
         except Exception as e:
             logger.error(f"Failed to load DINOv2 model: {e}")
             raise EmbeddingError(f"DINOv2 model loading failed: {e}")
-    
+
     def embed_part(self, image: np.ndarray, mask: np.ndarray) -> np.ndarray:
         """Generate DINOv2 embedding for masked region.
-        
+
         Args:
             image: Full image (H, W, C)
             mask: Binary mask (H, W)
-        
+
         Returns:
             DINOv2 embedding vector (normalized)
         """
         # Validate inputs
         validate_image(image)
         validate_mask(mask, image.shape)
-        
+
         # Extract part image
         part_img = extract_masked_region(image, mask)
-        
+
         # Preprocess
         img_tensor = self.transform(part_img).unsqueeze(0).to(self.device)
-        
+
         # Forward pass
         with torch.no_grad():
             embedding = self.model(img_tensor)
-        
+
         # Convert to numpy
         embedding = embedding.cpu().numpy()[0]
-        
+
         # Normalize
         embedding = embedding / (np.linalg.norm(embedding) + 1e-8)
-        
+
         return embedding.astype(np.float32)
-    
+
     def embed_batch(
         self, images: List[np.ndarray], masks: List[np.ndarray]
     ) -> np.ndarray:
         """Batch embedding generation (optimized for GPU).
-        
+
         Args:
             images: List of full images
             masks: List of binary masks
-        
+
         Returns:
             Embedding matrix (N, embedding_dim)
         """
         embeddings = []
-        
+
         # Process in batches
         for i in range(0, len(images), self.batch_size):
             batch_images = images[i : i + self.batch_size]
             batch_masks = masks[i : i + self.batch_size]
-            
+
             # Extract part images
             part_images = [
                 extract_masked_region(img, mask)
                 for img, mask in zip(batch_images, batch_masks)
             ]
-            
+
             # Preprocess batch
             batch_tensors = torch.stack(
                 [self.transform(img) for img in part_images]
             ).to(self.device)
-            
+
             # Forward pass
             with torch.no_grad():
                 batch_embeddings = self.model(batch_tensors)
-            
+
             # Convert to numpy
             batch_embeddings = batch_embeddings.cpu().numpy()
-            
+
             # Normalize
             batch_norms = np.linalg.norm(batch_embeddings, axis=1, keepdims=True)
             batch_embeddings = batch_embeddings / (batch_norms + 1e-8)
-            
+
             embeddings.append(batch_embeddings)
-        
+
         return np.concatenate(embeddings, axis=0).astype(np.float32)
-    
+
     def get_embedding_space(self) -> str:
         """Return embedding space type."""
         return "euclidean"
