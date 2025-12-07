@@ -26,13 +26,13 @@ def create_embedding_method(method_name, device="cpu"):
         CLIPEmbedding,
         MAEEmbedding,
     )
-    
+
     config = {
         "device": device,
         "cache_dir": "cache/embeddings",
         "use_cache": True,
     }
-    
+
     if method_name.lower() == "dummy":
         return DummyEmbedding({"embedding_dim": 768}), 768
     elif method_name.lower() in ["dino", "dinov2"]:
@@ -72,7 +72,6 @@ def run_single_embedding_benchmark(
             img = Image.open(img_path).convert("RGB")
             img_np = np.array(img)
 
-
             parts = adapter.discover_parts(img)
 
             # Generate embeddings
@@ -82,9 +81,7 @@ def run_single_embedding_benchmark(
                 try:
                     p.embedding = embedding_method.embed_part(img_np, p.mask)
                 except Exception as e:
-                    print(
-                        f"    Warning: Failed to embed part: {e}. Skipping part."
-                    )
+                    print(f"    Warning: Failed to embed part: {e}. Skipping part.")
                     continue
 
             all_parts.extend(parts)
@@ -104,7 +101,6 @@ def run_single_embedding_benchmark(
     engine = PartRetrievalEngine(embedding_dim=embedding_dim)
     engine.add_parts(all_parts)
     index_time = time.time() - start_time
-
 
     # Run queries
     num_queries = min(10, len(all_parts))
@@ -158,7 +154,9 @@ def run_single_embedding_benchmark(
     print(
         f"    ✓ Precision@{args.top_k}: {avg_precision:.4f}, Recall@{args.top_k}: {avg_recall:.4f}"
     )
-    print(f"    ✓ Index build: {index_time:.4f}s, Avg query: {results['timing']['avg_query_ms']:.2f}ms")
+    print(
+        f"    ✓ Index build: {index_time:.4f}s, Avg query: {results['timing']['avg_query_ms']:.2f}ms"
+    )
 
     return results
 
@@ -172,7 +170,9 @@ def cmd_retrieval(args):
 
     # Load dataset once
     if args.dataset == "custom":
-        dataset = load_dataset("custom", image_dir=args.images, num_images=args.num_images)
+        dataset = load_dataset(
+            "custom", image_dir=args.images, num_images=args.num_images
+        )
     else:
         dataset = load_dataset(args.dataset, num_images=args.num_images)
 
@@ -196,8 +196,12 @@ def cmd_retrieval(args):
     # Run benchmark for each embedding method
     for embedding_name in embedding_methods:
         try:
-            print(f"\n[{embedding_methods.index(embedding_name) + 1}/{len(embedding_methods)}] Embedding: {embedding_name}")
-            embedding_method, embedding_dim = create_embedding_method(embedding_name, device=device)
+            print(
+                f"\n[{embedding_methods.index(embedding_name) + 1}/{len(embedding_methods)}] Embedding: {embedding_name}"
+            )
+            embedding_method, embedding_dim = create_embedding_method(
+                embedding_name, device=device
+            )
 
             result = run_single_embedding_benchmark(
                 seg_model, dataset, embedding_method, embedding_name, device, args
@@ -212,6 +216,7 @@ def cmd_retrieval(args):
         except Exception as e:
             print(f"  ✗ Error benchmarking {embedding_name}: {e}")
             import traceback
+
             traceback.print_exc()
             continue
 
@@ -348,7 +353,9 @@ def cmd_classify(args):
 
     # Load dataset
     if args.dataset == "custom":
-        dataset = load_dataset("custom", image_dir=args.images, num_images=args.num_images)
+        dataset = load_dataset(
+            "custom", image_dir=args.images, num_images=args.num_images
+        )
     else:
         dataset = load_dataset(args.dataset, num_images=args.num_images)
 
@@ -364,7 +371,9 @@ def cmd_classify(args):
     else:
         embedding_methods = [args.embedding_method]
 
-    print(f"\nBenchmarking classification with {len(embedding_methods)} embedding method(s)...")
+    print(
+        f"\nBenchmarking classification with {len(embedding_methods)} embedding method(s)..."
+    )
 
     all_results = {}
     device = args.device or "cpu"
@@ -372,7 +381,15 @@ def cmd_classify(args):
     # Get class labels
     if not args.class_labels:
         # Default categories for zero-shot classification
-        class_labels = ["person", "animal", "object", "vehicle", "building", "furniture", "food"]
+        class_labels = [
+            "person",
+            "animal",
+            "object",
+            "vehicle",
+            "building",
+            "furniture",
+            "food",
+        ]
     else:
         class_labels = args.class_labels
 
@@ -381,8 +398,12 @@ def cmd_classify(args):
     # Run classification for each embedding method
     for embedding_name in embedding_methods:
         try:
-            print(f"\n[{embedding_methods.index(embedding_name) + 1}/{len(embedding_methods)}] Embedding: {embedding_name}")
-            embedding_method, embedding_dim = create_embedding_method(embedding_name, device=device)
+            print(
+                f"\n[{embedding_methods.index(embedding_name) + 1}/{len(embedding_methods)}] Embedding: {embedding_name}"
+            )
+            embedding_method, embedding_dim = create_embedding_method(
+                embedding_name, device=device
+            )
 
             # Collect parts with embeddings
             print(f"  Discovering and embedding parts...")
@@ -416,14 +437,18 @@ def cmd_classify(args):
 
             # Initialize classifier
             print(f"  Initializing zero-shot classifier...")
-            classifier = ZeroShotClassifier(embedding_dim=all_parts[0].embedding.shape[0])
+            classifier = ZeroShotClassifier(
+                embedding_dim=all_parts[0].embedding.shape[0]
+            )
 
             # Classify parts
             print(f"  Running classification on {len(all_parts)} parts...")
             start_time = time.time()
             correct_predictions = 0
             total_predictions = 0
-            predictions_by_label = {label: {"correct": 0, "total": 0} for label in class_labels}
+            predictions_by_label = {
+                label: {"correct": 0, "total": 0} for label in class_labels
+            }
 
             for part in all_parts:
                 # Classify the part
@@ -434,7 +459,11 @@ def cmd_classify(args):
                 ground_truth = part.metadata.get("ground_truth", "unknown")
 
                 # Check if correct (simplified: any match counts)
-                is_correct = predicted_label.lower() == ground_truth.lower() if ground_truth != "unknown" else False
+                is_correct = (
+                    predicted_label.lower() == ground_truth.lower()
+                    if ground_truth != "unknown"
+                    else False
+                )
 
                 if is_correct:
                     correct_predictions += 1
@@ -448,7 +477,11 @@ def cmd_classify(args):
             classify_time = time.time() - start_time
 
             # Compute metrics
-            overall_accuracy = correct_predictions / total_predictions if total_predictions > 0 else 0.0
+            overall_accuracy = (
+                correct_predictions / total_predictions
+                if total_predictions > 0
+                else 0.0
+            )
             per_label_accuracy = {
                 label: data["correct"] / data["total"] if data["total"] > 0 else 0.0
                 for label, data in predictions_by_label.items()
@@ -468,24 +501,34 @@ def cmd_classify(args):
                     "overall_accuracy": round(overall_accuracy, 4),
                     "correct_predictions": correct_predictions,
                     "total_predictions": total_predictions,
-                    "per_label_accuracy": {k: round(v, 4) for k, v in per_label_accuracy.items()},
+                    "per_label_accuracy": {
+                        k: round(v, 4) for k, v in per_label_accuracy.items()
+                    },
                     "num_parts": len(all_parts),
                 },
                 "timing": {
                     "classification_sec": round(classify_time, 4),
                     "avg_prediction_ms": round(
-                        (classify_time / total_predictions) * 1000 if total_predictions > 0 else 0, 2
+                        (
+                            (classify_time / total_predictions) * 1000
+                            if total_predictions > 0
+                            else 0
+                        ),
+                        2,
                     ),
                 },
             }
 
             all_results[embedding_name] = results
             print(f"  ✓ Overall accuracy: {overall_accuracy:.4f}")
-            print(f"  ✓ Classification time: {classify_time:.4f}s ({results['timing']['avg_prediction_ms']:.2f}ms per sample)")
+            print(
+                f"  ✓ Classification time: {classify_time:.4f}s ({results['timing']['avg_prediction_ms']:.2f}ms per sample)"
+            )
 
         except Exception as e:
             print(f"  ✗ Error classifying with {embedding_name}: {e}")
             import traceback
+
             traceback.print_exc()
             continue
 
@@ -541,14 +584,16 @@ def generate_classification_csv(results, csv_path):
         writer = csv.writer(f)
 
         # Header
-        writer.writerow([
-            "Embedding",
-            "Overall Accuracy",
-            "Correct Predictions",
-            "Total Predictions",
-            "Classification Time (s)",
-            "Avg Prediction (ms)",
-        ])
+        writer.writerow(
+            [
+                "Embedding",
+                "Overall Accuracy",
+                "Correct Predictions",
+                "Total Predictions",
+                "Classification Time (s)",
+                "Avg Prediction (ms)",
+            ]
+        )
 
         # Rows
         for embedding_name in sorted(results.keys()):
@@ -556,14 +601,16 @@ def generate_classification_csv(results, csv_path):
             metrics = result["metrics"]
             timing = result["timing"]
 
-            writer.writerow([
-                embedding_name,
-                metrics["overall_accuracy"],
-                metrics["correct_predictions"],
-                metrics["total_predictions"],
-                timing["classification_sec"],
-                timing["avg_prediction_ms"],
-            ])
+            writer.writerow(
+                [
+                    embedding_name,
+                    metrics["overall_accuracy"],
+                    metrics["correct_predictions"],
+                    metrics["total_predictions"],
+                    timing["classification_sec"],
+                    timing["avg_prediction_ms"],
+                ]
+            )
 
 
 def print_classification_summary_table(results):
@@ -616,13 +663,15 @@ def cmd_ablation_study(args):
 
     # Get available models
     from segmentation_pipeline.models import list_available_models
-    
+
     seg_models = [m for m in list_available_models() if m != "dummy"]  # Exclude dummy
     embedding_methods = ["clip", "dinov2", "mae"]  # Exclude dummy
     benchmark_type = args.benchmark_type  # retrieval or classify
 
     print(f"\nSegmentation models: {len(seg_models)} → {', '.join(seg_models)}")
-    print(f"Embedding methods: {len(embedding_methods)} → {', '.join(embedding_methods)}")
+    print(
+        f"Embedding methods: {len(embedding_methods)} → {', '.join(embedding_methods)}"
+    )
     print(f"Benchmark type: {benchmark_type}")
     print(f"Total combinations to run: {len(seg_models) * len(embedding_methods)}")
 
@@ -641,7 +690,9 @@ def cmd_ablation_study(args):
             combination_count += 1
             combo_name = f"{seg_model}_{embedding_method}"
 
-            print(f"\n[{combination_count}/{len(seg_models) * len(embedding_methods)}] {combo_name}")
+            print(
+                f"\n[{combination_count}/{len(seg_models) * len(embedding_methods)}] {combo_name}"
+            )
             print(f"  Segmentation: {seg_model}")
             print(f"  Embedding: {embedding_method}")
 
@@ -723,7 +774,9 @@ def cmd_ablation_study(args):
 
         # Generate HTML report
         html_path = output_dir / f"ablation_{benchmark_type}_report.html"
-        generate_ablation_html_report(all_results, html_path, benchmark_type, seg_models, embedding_methods)
+        generate_ablation_html_report(
+            all_results, html_path, benchmark_type, seg_models, embedding_methods
+        )
         print(f"✓ Ablation HTML report saved to {html_path}")
 
     # Print summary
@@ -748,14 +801,18 @@ def run_retrieval_benchmark_single_combo(args):
     try:
         # Load dataset
         if args.dataset == "custom":
-            dataset = load_dataset("custom", image_dir=args.images, num_images=args.num_images)
+            dataset = load_dataset(
+                "custom", image_dir=args.images, num_images=args.num_images
+            )
         else:
             dataset = load_dataset(args.dataset, num_images=args.num_images)
 
         # Setup models
         model_cfg = ModelConfig(device=args.device or "cpu", model_type=None)
         seg_model = get_model(args.model, model_cfg)
-        embedding_method, embedding_dim = create_embedding_method(args.embedding_method, device=args.device or "cpu")
+        embedding_method, embedding_dim = create_embedding_method(
+            args.embedding_method, device=args.device or "cpu"
+        )
 
         # Process images
         all_parts = []
@@ -827,17 +884,25 @@ def run_classification_benchmark_single_combo(args):
     try:
         # Load dataset
         if args.dataset == "custom":
-            dataset = load_dataset("custom", image_dir=args.images, num_images=args.num_images)
+            dataset = load_dataset(
+                "custom", image_dir=args.images, num_images=args.num_images
+            )
         else:
             dataset = load_dataset(args.dataset, num_images=args.num_images)
 
         # Setup models
         model_cfg = ModelConfig(device=args.device or "cpu", model_type=None)
         seg_model = get_model(args.model, model_cfg)
-        embedding_method, embedding_dim = create_embedding_method(args.embedding_method, device=args.device or "cpu")
+        embedding_method, embedding_dim = create_embedding_method(
+            args.embedding_method, device=args.device or "cpu"
+        )
 
         # Get class labels
-        class_labels = args.class_labels if args.class_labels else ["person", "animal", "object", "vehicle", "building"]
+        class_labels = (
+            args.class_labels
+            if args.class_labels
+            else ["person", "animal", "object", "vehicle", "building"]
+        )
 
         # Process images
         all_parts = []
@@ -869,13 +934,19 @@ def run_classification_benchmark_single_combo(args):
         for part in all_parts:
             predicted_label = classifier.classify(part, class_labels)
             ground_truth = part.metadata.get("ground_truth", "unknown")
-            is_correct = predicted_label.lower() == ground_truth.lower() if ground_truth != "unknown" else False
+            is_correct = (
+                predicted_label.lower() == ground_truth.lower()
+                if ground_truth != "unknown"
+                else False
+            )
 
             if is_correct:
                 correct_predictions += 1
             total_predictions += 1
 
-        overall_accuracy = correct_predictions / total_predictions if total_predictions > 0 else 0.0
+        overall_accuracy = (
+            correct_predictions / total_predictions if total_predictions > 0 else 0.0
+        )
 
         return {
             "metrics": {
@@ -922,7 +993,9 @@ def generate_ablation_csv(results, csv_path, benchmark_type):
 
             for embedding_method in embedding_methods:
                 if embedding_method in seg_results:
-                    value = seg_results[embedding_method]["metrics"].get(metric_name, "N/A")
+                    value = seg_results[embedding_method]["metrics"].get(
+                        metric_name, "N/A"
+                    )
                     row.append(value)
                 else:
                     row.append("N/A")
@@ -930,9 +1003,11 @@ def generate_ablation_csv(results, csv_path, benchmark_type):
             writer.writerow(row)
 
 
-def generate_ablation_html_report(results, html_path, benchmark_type, seg_models, embedding_methods):
+def generate_ablation_html_report(
+    results, html_path, benchmark_type, seg_models, embedding_methods
+):
     """Generate comprehensive HTML ablation report."""
-    
+
     # Determine metric names
     if benchmark_type == "retrieval":
         metric_name = "avg_precision_at_k"
@@ -987,7 +1062,9 @@ def generate_ablation_html_report(results, html_path, benchmark_type, seg_models
         if seg_model in results:
             for embedding_method in embedding_methods:
                 if embedding_method in results[seg_model]:
-                    value = results[seg_model][embedding_method]["metrics"].get(metric_name, None)
+                    value = results[seg_model][embedding_method]["metrics"].get(
+                        metric_name, None
+                    )
                     if value is not None:
                         all_values.append(value)
 
@@ -1001,7 +1078,9 @@ def generate_ablation_html_report(results, html_path, benchmark_type, seg_models
 
         for embedding_method in embedding_methods:
             if embedding_method in results[seg_model]:
-                value = results[seg_model][embedding_method]["metrics"].get(metric_name, None)
+                value = results[seg_model][embedding_method]["metrics"].get(
+                    metric_name, None
+                )
                 if value is not None:
                     # Color code based on value
                     if value >= mid_val:
@@ -1027,7 +1106,9 @@ def generate_ablation_html_report(results, html_path, benchmark_type, seg_models
     combinations = []
     for seg_model in results:
         for embedding_method in results[seg_model]:
-            value = results[seg_model][embedding_method]["metrics"].get(metric_name, None)
+            value = results[seg_model][embedding_method]["metrics"].get(
+                metric_name, None
+            )
             if value is not None:
                 combinations.append((f"{seg_model} + {embedding_method}", value))
 
@@ -1046,15 +1127,19 @@ def generate_ablation_html_report(results, html_path, benchmark_type, seg_models
     for i, (combo, value) in enumerate(combinations[-5:], 1):
         html_content += f"        <li><strong>{combo}</strong>: {value:.4f}</li>\n"
 
-    html_content += """
+    html_content += (
+        """
     </ol>
 
     <footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ccc; color: #666;">
-        <p>Generated on """ + time.strftime("%Y-%m-%d %H:%M:%S") + """</p>
+        <p>Generated on """
+        + time.strftime("%Y-%m-%d %H:%M:%S")
+        + """</p>
     </footer>
 </body>
 </html>
 """
+    )
 
     with open(html_path, "w") as f:
         f.write(html_content)
@@ -1062,7 +1147,7 @@ def generate_ablation_html_report(results, html_path, benchmark_type, seg_models
 
 def print_ablation_summary(results, benchmark_type, failed_combinations):
     """Print ablation study summary to console."""
-    
+
     if benchmark_type == "retrieval":
         metric_name = "avg_precision_at_k"
         metric_display = "Precision@K"
@@ -1093,7 +1178,9 @@ def print_ablation_summary(results, benchmark_type, failed_combinations):
         row = f"{seg_model:<20}"
         for embedding_method in embedding_methods:
             if embedding_method in results[seg_model]:
-                value = results[seg_model][embedding_method]["metrics"].get(metric_name, None)
+                value = results[seg_model][embedding_method]["metrics"].get(
+                    metric_name, None
+                )
                 if value is not None:
                     row += f"{value:<15.4f}"
                 else:
@@ -1151,9 +1238,7 @@ Examples:
     subparsers = parser.add_subparsers(dest="command", help="Benchmark type")
 
     # Retrieval benchmark
-    p_retrieval = subparsers.add_parser(
-        "retrieval", help="Run retrieval benchmark"
-    )
+    p_retrieval = subparsers.add_parser("retrieval", help="Run retrieval benchmark")
     p_retrieval.add_argument("--dataset", default="custom", help="Dataset type")
     p_retrieval.add_argument("--images", default="../images", help="Image directory")
     p_retrieval.add_argument(
@@ -1179,7 +1264,6 @@ Examples:
     )
     p_retrieval.add_argument("--output", help="Output JSON file")
     p_retrieval.set_defaults(func=cmd_retrieval)
-
 
     # Classification benchmark
     p_classify = subparsers.add_parser("classify", help="Run classification benchmark")
@@ -1229,7 +1313,9 @@ Examples:
     p_ablation.add_argument(
         "--num-images", type=int, default=10, help="Number of images per combination"
     )
-    p_ablation.add_argument("--top-k", type=int, default=5, help="Top-K for retrieval metrics")
+    p_ablation.add_argument(
+        "--top-k", type=int, default=5, help="Top-K for retrieval metrics"
+    )
     p_ablation.add_argument(
         "--class-labels",
         nargs="+",
