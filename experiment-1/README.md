@@ -46,6 +46,8 @@ All experiment operations are performed through a single `experiment` command:
 - **`compare`** — Compare metrics across multiple experiments
 - **`evaluate`** — Run evaluation on existing experiment results
 - **`clean`** — Clean up experiment outputs
+- **`models`** — Manage model downloads and cache ✨ NEW
+- **`visualize`** — Generate visualizations for experiments ✨ NEW
 
 ### Run Experiments
 
@@ -64,11 +66,52 @@ All experiment operations are performed through a single `experiment` command:
   --name "production_test" \
   -o data.max_images=20 \
   -o segmentation.model=yolo \
-  -o embedding.method=clip \
+  -o embedding.method=dinov2 \
+  -o embedding.model_size=base \
   -o evaluation.enabled=true
 
 # Use specific device
 ./experiment run --device cuda
+```
+
+### Model Management ✨ NEW
+
+```bash
+# List all available models
+./experiment models list
+
+# Download specific model
+./experiment models download sam-vit-b
+
+# Download all required models for a config
+./experiment models download all
+
+# Verify model integrity
+./experiment models verify sam-vit-b
+./experiment models verify  # Verify all
+
+# Clean model cache
+./experiment models clean sam-vit-b  # Specific model
+./experiment models clean --force    # All models (no confirm)
+```
+
+### Visualization ✨ NEW
+
+```bash
+# Visualize embedding space
+./experiment visualize embeddings exp_ABC123 \
+  --method umap \
+  --color-by label \
+  --output embeddings.html
+
+# Cluster analysis
+./experiment visualize clusters exp_ABC123 \
+  --n-clusters 10 \
+  --method tsne
+
+# Generate comparison report
+./experiment visualize compare exp_A exp_B exp_C \
+  --output reports/comparison
 ```
 
 ### Track and Compare
@@ -328,3 +371,68 @@ class MyCustomEvaluator(EvaluationTask):
 ## License
 
 Research project - see main repository for license information.
+
+## Visualization & Analysis
+
+### Embedding Space Visualization
+
+Explore high-dimensional embedding spaces in 2D:
+
+```python
+from hierarchical_pipeline.visualization import plot_embedding_space
+
+# Visualize with UMAP
+fig = plot_embedding_space(
+    parts=all_parts,
+    method="umap",  # or "tsne", "pca"
+    color_by="label",
+    save_path="embedding_space.html"
+)
+```
+
+**Supported Dimensionality Reduction**:
+- **UMAP**: Preserves both local and global structure (recommended)
+- **t-SNE**: Emphasizes local neighborhoods  
+- **PCA**: Fast linear reduction
+
+**Coloring Options**:
+- `label`: Semantic categories
+- `image`: Source image
+- `level`: Hierarchy level
+- `confidence`: Detection confidence
+- `area`: Part area in pixels
+
+### Clustering Analysis
+
+Discover semantic clusters automatically:
+
+```python
+from hierarchical_pipeline.visualization import plot_embedding_clusters
+
+fig, labels = plot_embedding_clusters(
+    parts=all_parts,
+    n_clusters=10,
+    method="umap",
+    save_path="clusters.html"
+)
+```
+
+### Comparison Reports
+
+Generate comprehensive HTML reports comparing multiple experiments:
+
+```python
+from hierarchical_pipeline.visualization import generate_comparison_report
+
+generate_comparison_report(
+    experiment_ids=["exp_001", "exp_002", "exp_003"],
+    output_dir="reports/comparison"
+)
+```
+
+**Report Includes**:
+- Metrics comparison table (CSV + interactive charts)
+- Configuration differences
+- Experiment timeline visualization
+- Interactive dashboards with Plotly
+

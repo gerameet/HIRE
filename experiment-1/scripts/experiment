@@ -306,6 +306,242 @@ def cmd_show(args):
         print(json.dumps(run.config, indent=2))
 
 
+
+
+def cmd_models(args):
+    """Manage model downloads and cache."""
+    from hierarchical_pipeline.models import ModelManager
+    
+    manager = ModelManager()
+    
+    if args.models_command == "list":
+        # List all models and their availability
+        print("=" * 70)
+        print("AVAILABLE MODELS")
+        print("=" * 70)
+        
+        models = manager.list_available_models()
+        registry = manager.registry
+        
+        print(f"\n{'Model Name':<30} {'Status':<12} {'Size':<12} {'Type':<15}")
+        print("-" * 70)
+        
+        for name, available in sorted(models.items()):
+            spec = registry[name]
+            status = "✓ Available" if available else "  Download"
+            size = f"{spec.size_mb:.0f} MB"
+            print(f"{name:<30} {status:<12} {size:<12} {spec.type:<15}")
+        
+        total_available = sum(models.values())
+        print(f"\n{total_available}/{len(models)} models available")
+        print(f"Total cache size: {manager.get_cache_size():.1f} MB")
+    
+    elif args.models_command == "download":
+        # Download specific model or all models
+        if args.model_name == "all":
+            print("Downloading all models...")
+            for model_name in manager.registry.keys():
+                if not manager.is_available(model_name):
+                    try:
+                        print(f"\n{model_name}:")
+                        manager.download_model(model_name)
+                        print(f"✓ {model_name} downloaded")
+                    except Exception as e:
+                        print(f"✗ Failed to download {model_name}: {e}")
+                else:
+                    print(f"✓ {model_name} already available")
+        else:
+            # Download specific model
+            model_name = args.model_name
+            if model_name not in manager.registry:
+                print(f"✗ Unknown model: {model_name}")
+                print(f"Available models: {', '.join(manager.registry.keys())}")
+                sys.exit(1)
+            
+            if manager.is_available(model_name) and not args.force:
+                print(f"✓ {model_name} already available")
+                print("Use --force to re-download")
+            else:
+                try:
+                    print(f"Downloading {model_name}...")
+                    manager.download_model(model_name, force=args.force)
+                    print(f"✓ {model_name} downloaded successfully")
+                except Exception as e:
+                    print(f"✗ Download failed: {e}")
+                    sys.exit(1)
+    
+    elif args.models_command == "verify":
+        # Verify model integrity
+        if args.model_name:
+            model_name = args.model_name
+            if model_name not in manager.registry:
+                print(f"✗ Unknown model: {model_name}")
+                sys.exit(1)
+            
+            if manager.verify_model(model_name):
+                print(f"✓ {model_name} verified successfully")
+            else:
+                print(f"✗ {model_name} verification failed")
+                sys.exit(1)
+        else:
+            # Verify all models
+            print("Verifying all models...")
+            for model_name in manager.registry.keys():
+                if manager.is_available(model_name):
+                    if manager.verify_model(model_name):
+                        print(f"✓ {model_name}")
+                    else:
+                        print(f"✗ {model_name} FAILED")
+                else:
+                    print(f"  {model_name} (not downloaded)")
+    
+    elif args.models_command == "clean":
+        # Clean model cache
+        if args.model_name:
+            model_name = args.model_name
+            if model_name not in manager.registry:
+                print(f"✗ Unknown model: {model_name}")
+                sys.exit(1)
+            
+            if not args.force:
+                response = input(f"Delete {model_name} cache? (yes/no): ")
+                if response.lower() != "yes":
+                    print("Cancelled")
+                    return
+            
+            manager.clear_cache(model_name)
+            print(f"✓ Cleared cache for {model_name}")
+        else:
+            # Clean entire cache
+            cache_size = manager.get_cache_size()
+            if not args.force:
+                response = input(f"Delete entire model cache ({cache_size:.1f} MB)? (yes/no): ")
+                if response.lower() != "yes":
+                    print("Cancelled")
+                    return
+            
+            manager.clear_cache()
+            print(f"✓ Cleared entire model cache ({cache_size:.1f} MB)")
+
+
+def cmd_visualize(args):
+    """Generate visualizations for experiments."""
+    from hierarchical_pipeline.tracking import ExperimentTracker
+    from hierarchical_pipeline.visualization import (
+        plot_embedding_space,
+        plot_embedding_clusters,
+        generate_comparison_report
+    )
+    from pathlib import Path
+    
+    tracker = ExperimentTracker()
+    
+    if args.viz_command == "embeddings":
+        # Visualize embedding space
+        run = tracker.load_run(args.experiment_id)
+        if not run:
+            print(f"✗ Experiment not found: {args.experiment_id}")
+            sys.exit(1)
+        
+        # Load experiments and extract parts
+        print(f"Loading experiment: {run.experiment_name}")
+        
+        # Get all parts from graphs
+        all_parts = []
+        for graph in run.graphs:
+            all_parts.extend([node.data for node in graph.nodes if hasattr(node.data, 'embedding')])
+        
+        if not all_parts:
+            print("✗ No parts with embeddings found")
+            sys.exit(1)
+        
+        print(f"Found {len(all_parts)} parts with embeddings")
+        
+        # Generate visualization
+        output_path = args.output or f"visualizations/{args.experiment_id}_embeddings.html"
+        
+        try:
+            fig = plot_embedding_space(
+                parts=all_parts,
+                method=args.method,
+                color_by=args.color_by,
+                save_path=output_path,
+                title=f"Embedding Space: {run.experiment_name} ({args.method.upper()})"
+            )
+            print(f"✓ Saved visualization to: {output_path}")
+        except Exception as e:
+            print(f"✗ Visualization failed: {e}")
+            if args.verbose:
+                import traceback
+                traceback.print_exc()
+            sys.exit(1)
+    
+    elif args.viz_command == "clusters":
+        # Visualize clusters
+        run = tracker.load_run(args.experiment_id)
+        if not run:
+            print(f"✗ Experiment not found: {args.experiment_id}")
+            sys.exit(1)
+        
+        # Get all parts
+        all_parts = []
+        for graph in run.graphs:
+            all_parts.extend([node.data for node in graph.nodes if hasattr(node.data, 'embedding')])
+        
+        if not all_parts:
+            print("✗ No parts with embeddings found")
+            sys.exit(1)
+        
+        print(f"Found {len(all_parts)} parts with embeddings")
+        print(f"Clustering into {args.n_clusters} clusters...")
+        
+        output_path = args.output or f"visualizations/{args.experiment_id}_clusters.html"
+        
+        try:
+            fig, labels = plot_embedding_clusters(
+                parts=all_parts,
+                n_clusters=args.n_clusters,
+                method=args.method,
+                save_path=output_path
+            )
+            print(f"✓ Saved cluster visualization to: {output_path}")
+            
+            # Print cluster statistics
+            from collections import Counter
+            cluster_sizes = Counter(labels)
+            print("\nCluster sizes:")
+            for cluster_id, size in sorted(cluster_sizes.items()):
+                print(f"  Cluster {cluster_id}: {size} parts")
+        except Exception as e:
+            print(f"✗ Clustering failed: {e}")
+            if args.verbose:
+                import traceback
+                traceback.print_exc()
+            sys.exit(1)
+    
+    elif args.viz_command == "compare":
+        # Generate comparison report
+        experiment_ids = args.experiments
+        output_dir = Path(args.output or "reports/comparison")
+        
+        print(f"Generating comparison report for {len(experiment_ids)} experiments...")
+        print(f"Output directory: {output_dir}")
+        
+        try:
+            generate_comparison_report(
+                experiment_ids=experiment_ids,
+                output_dir=output_dir,
+                tracker=tracker
+            )
+            print(f"\n✓ Comparison report generated: {output_dir}/report.html")
+        except Exception as e:
+            print(f"✗ Comparison failed: {e}")
+            if args.verbose:
+                import traceback
+                traceback.print_exc()
+            sys.exit(1)
+
+
 def cmd_clean(args):
     """Clean up experiments or outputs."""
     tracker = ExperimentTracker()
@@ -410,6 +646,63 @@ def main():
     p_clean.add_argument("--status", help="Delete all experiments with status")
     p_clean.add_argument("--force", "-f", action="store_true", help="Skip confirmation")
     p_clean.set_defaults(func=cmd_clean)
+    
+    # Models command
+    p_models = subparsers.add_parser("models", help="Manage model downloads and cache")
+    models_subparsers = p_models.add_subparsers(dest="models_command", help="Models subcommand")
+    
+    # models list
+    p_models_list = models_subparsers.add_parser("list", help="List all available models")
+    p_models_list.set_defaults(func=cmd_models)
+    
+    # models download
+    p_models_download = models_subparsers.add_parser("download", help="Download model")
+    p_models_download.add_argument("model_name", help="Model name or 'all'")
+    p_models_download.add_argument("--force", "-f", action="store_true", help="Force re-download")
+    p_models_download.set_defaults(func=cmd_models)
+    
+    # models verify
+    p_models_verify = models_subparsers.add_parser("verify", help="Verify model integrity")
+    p_models_verify.add_argument("model_name", nargs="?", help="Model name (optional, verifies all if omitted)")
+    p_models_verify.set_defaults(func=cmd_models)
+    
+    # models clean
+    p_models_clean = models_subparsers.add_parser("clean", help="Clean model cache")
+    p_models_clean.add_argument("model_name", nargs="?", help="Model name (optional, cleans all if omitted)")
+    p_models_clean.add_argument("--force", "-f", action="store_true", help="Skip confirmation")
+    p_models_clean.set_defaults(func=cmd_models)
+    
+    # Visualize command
+    p_viz = subparsers.add_parser("visualize", help="Generate visualizations")
+    viz_subparsers = p_viz.add_subparsers(dest="viz_command", help="Visualization type")
+    
+    # visualize embeddings
+    p_viz_emb = viz_subparsers.add_parser("embeddings", help="Visualize embedding space")
+    p_viz_emb.add_argument("experiment_id", help="Experiment ID")
+    p_viz_emb.add_argument("--method", choices=["umap", "tsne", "pca"], default="umap",
+                          help="Dimensionality reduction method")
+    p_viz_emb.add_argument("--color-by", default="label",
+                          help="Color points by attribute (label, image, level, confidence)")
+    p_viz_emb.add_argument("--output", "-o", help="Output path for HTML file")
+    p_viz_emb.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
+    p_viz_emb.set_defaults(func=cmd_visualize)
+    
+    # visualize clusters
+    p_viz_cluster = viz_subparsers.add_parser("clusters", help="Visualize embedding clusters")
+    p_viz_cluster.add_argument("experiment_id", help="Experiment ID")
+    p_viz_cluster.add_argument("--n-clusters", type=int, default=5, help="Number of clusters")
+    p_viz_cluster.add_argument("--method", choices=["umap", "tsne", "pca"], default="umap",
+                              help="Dimensionality reduction method")
+    p_viz_cluster.add_argument("--output", "-o", help="Output path for HTML file")
+    p_viz_cluster.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
+    p_viz_cluster.set_defaults(func=cmd_visualize)
+    
+    # visualize compare
+    p_viz_compare = viz_subparsers.add_parser("compare", help="Generate comparison report")
+    p_viz_compare.add_argument("experiments", nargs="+", help="Experiment IDs to compare")
+    p_viz_compare.add_argument("--output", "-o", help="Output directory for report")
+    p_viz_compare.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
+    p_viz_compare.set_defaults(func=cmd_visualize)
     
     args = parser.parse_args()
     

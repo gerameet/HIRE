@@ -1,7 +1,7 @@
 """Core components for hierarchical visual pipeline."""
 
 from .interfaces import PartDiscoveryMethod, EmbeddingMethod, HierarchyBuilder
-from .data import Part, Node, Edge, ParseGraph, BoundingBox
+from .data import Part, Node, Edge, ParseGraph
 from .validation import (
     validate_image,
     validate_mask,
@@ -30,7 +30,6 @@ __all__ = [
     "Node",
     "Edge",
     "ParseGraph",
-    "BoundingBox",
     # Validation
     "validate_image",
     "validate_mask",
