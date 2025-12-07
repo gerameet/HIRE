@@ -1,25 +1,29 @@
-"""Embedding generation module for hierarchical visual representations.
+"""Embedding generation methods for visual parts.
 
-This module provides multiple embedding methods for encoding visual parts:
-- DummyEmbedding: Random embeddings for testing
-- DINOEmbedding: Self-supervised ViT embeddings
+Provides multiple embedding strategies:
+- DummyEmbedding: Random baseline for testing
+- DINOEmbedding: Self-supervised vision transformer
+- DINOv2Embedding: Improved self-supervised vision transformer v2
 - CLIPEmbedding: Vision-language aligned embeddings
-- MAEEmbedding: Masked autoencoder embeddings
+- MAEEmbedding: Masked autoencoder features
 
-Also includes hyperbolic projection utilities for hierarchical representation.
+Also includes:
+- EmbeddingCache: Disk-based caching for fast iteration
 """
 
-from .methods import DummyEmbedding, DINOEmbedding, CLIPEmbedding, MAEEmbedding
-from .cache import EmbeddingCache
-from .hyperbolic import (
-    HyperbolicProjection,
-    HyperbolicDistance,
-    verify_hyperbolic_constraints,
+from .methods import (
+    DummyEmbedding,
+    DINOEmbedding,
+    DINOv2Embedding,
+    CLIPEmbedding,
+    MAEEmbedding,
 )
+from .cache import EmbeddingCache
 
 __all__ = [
     "DummyEmbedding",
     "DINOEmbedding",
+    "DINOv2Embedding",
     "CLIPEmbedding",
     "MAEEmbedding",
     "EmbeddingCache",

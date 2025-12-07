@@ -17,10 +17,14 @@ ultralytics
 
 # Visualization
 plotly
+umap-learn
+scikit-learn
+pandas
 
 # CLI and utilities
 typer
-pandas
+requests
+tqdm
 
 # Testing (Phase 2)
 pytest

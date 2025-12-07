@@ -241,7 +241,7 @@ class ExperimentRunner:
         emb_config: Dict[str, Any]
     ):
         """Create embedding method instance."""
-        from ..embedding import DummyEmbedding, DINOEmbedding, CLIPEmbedding, MAEEmbedding
+        from ..embedding import DummyEmbedding, DINOEmbedding, DINOv2Embedding, CLIPEmbedding, MAEEmbedding
         
         config = {
             "device": device,
@@ -251,8 +251,12 @@ class ExperimentRunner:
         
         if method_name.lower() == "dummy":
             return DummyEmbedding({"embedding_dim": 768})
-        elif method_name.lower() in ["dino", "dinov2"]:
+        elif method_name.lower() == "dino":
             return DINOEmbedding(config)
+        elif method_name.lower() == "dinov2":
+            # Support model size configuration
+            config["model_size"] = emb_config.get("model_size", "base")
+            return DINOv2Embedding(config)
         elif method_name.lower() == "clip":
             return CLIPEmbedding(config)
         elif method_name.lower() == "mae":

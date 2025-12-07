@@ -1,0 +1,191 @@
+{
+    "models": {
+        "dino-vitb16": {
+            "type": "torch_hub",
+            "source": "facebookresearch/dino:main",
+            "model_fn": "dino_vitb16",
+            "required_for": [
+                "dino"
+            ],
+            "size_mb": 330,
+            "checksum": null
+        },
+        "dinov2-vitb14": {
+            "type": "torch_hub",
+            "source": "facebookresearch/dinov2",
+            "model_fn": "dinov2_vitb14",
+            "required_for": [
+                "dinov2"
+            ],
+            "size_mb": 350,
+            "checksum": null
+        },
+        "dinov2-vits14": {
+            "type": "torch_hub",
+            "source": "facebookresearch/dinov2",
+            "model_fn": "dinov2_vits14",
+            "required_for": [
+                "dinov2"
+            ],
+            "size_mb": 85,
+            "checksum": null
+        },
+        "dinov2-vitl14": {
+            "type": "torch_hub",
+            "source": "facebookresearch/dinov2",
+            "model_fn": "dinov2_vitl14",
+            "required_for": [
+                "dinov2"
+            ],
+            "size_mb": 1200,
+            "checksum": null
+        },
+        "clip-vit-base-patch32": {
+            "type": "huggingface",
+            "source": "openai/clip-vit-base-patch32",
+            "required_for": [
+                "clip"
+            ],
+            "size_mb": 600,
+            "checksum": null
+        },
+        "clip-vit-large-patch14": {
+            "type": "huggingface",
+            "source": "openai/clip-vit-large-patch14",
+            "required_for": [
+                "clip"
+            ],
+            "size_mb": 1700,
+            "checksum": null
+        },
+        "vit-mae-base": {
+            "type": "huggingface",
+            "source": "facebook/vit-mae-base",
+            "required_for": [
+                "mae"
+            ],
+            "size_mb": 350,
+            "checksum": null
+        },
+        "vit-mae-large": {
+            "type": "huggingface",
+            "source": "facebook/vit-mae-large",
+            "required_for": [
+                "mae"
+            ],
+            "size_mb": 1200,
+            "checksum": null
+        },
+        "sam-vit-b": {
+            "type": "manual",
+            "source": "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_b_01ec64.pth",
+            "local_path": "sam_vit_b_01ec64.pth",
+            "checksum": "01ec64d29a2fca3f0661936605ae66f8",
+            "required_for": [
+                "sam"
+            ],
+            "size_mb": 375
+        },
+        "sam-vit-l": {
+            "type": "manual",
+            "source": "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_l_0b3195.pth",
+            "local_path": "sam_vit_l_0b3195.pth",
+            "checksum": "0b3195507c641ddb6910d2bb5adee89c",
+            "required_for": [
+                "sam"
+            ],
+            "size_mb": 1250
+        },
+        "sam-vit-h": {
+            "type": "manual",
+            "source": "https://dl.fbaipublicfiles.com/segment_anything/sam_vit_h_4b8939.pth",
+            "local_path": "sam_vit_h_4b8939.pth",
+            "checksum": "4b8939a88964f0f4ff5f5b2642c598a6",
+            "required_for": [
+                "sam"
+            ],
+            "size_mb": 2560
+        },
+        "mask2former-coco-instance": {
+            "type": "huggingface",
+            "source": "facebook/mask2former-swin-base-coco-instance",
+            "required_for": [
+                "mask2former"
+            ],
+            "size_mb": 200,
+            "checksum": null
+        },
+        "mask2former-coco-panoptic": {
+            "type": "huggingface",
+            "source": "facebook/mask2former-swin-base-coco-panoptic",
+            "required_for": [
+                "mask2former"
+            ],
+            "size_mb": 200,
+            "checksum": null
+        },
+        "segformer-ade": {
+            "type": "huggingface",
+            "source": "nvidia/segformer-b0-finetuned-ade-512-512",
+            "required_for": [
+                "segformer"
+            ],
+            "size_mb": 15,
+            "checksum": null
+        },
+        "clipseg": {
+            "type": "huggingface",
+            "source": "CIDAS/clipseg-rd64-refined",
+            "required_for": [
+                "clipseg"
+            ],
+            "size_mb": 350,
+            "checksum": null
+        },
+        "yolov8n-seg": {
+            "type": "ultralytics",
+            "source": "yolov8n-seg.pt",
+            "required_for": [
+                "yolo"
+            ],
+            "size_mb": 7,
+            "checksum": null
+        },
+        "yolov8s-seg": {
+            "type": "ultralytics",
+            "source": "yolov8s-seg.pt",
+            "required_for": [
+                "yolo"
+            ],
+            "size_mb": 23,
+            "checksum": null
+        },
+        "yolov8m-seg": {
+            "type": "ultralytics",
+            "source": "yolov8m-seg.pt",
+            "required_for": [
+                "yolo"
+            ],
+            "size_mb": 52,
+            "checksum": null
+        },
+        "yolov8l-seg": {
+            "type": "ultralytics",
+            "source": "yolov8l-seg.pt",
+            "required_for": [
+                "yolo"
+            ],
+            "size_mb": 83,
+            "checksum": null
+        },
+        "yolov8x-seg": {
+            "type": "ultralytics",
+            "source": "yolov8x-seg.pt",
+            "required_for": [
+                "yolo"
+            ],
+            "size_mb": 137,
+            "checksum": null
+        }
+    }
+}
