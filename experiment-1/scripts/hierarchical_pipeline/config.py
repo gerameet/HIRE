@@ -82,10 +82,12 @@ class OutputConfig:
 @dataclass
 class LabelingConfig:
     """Configuration for automatic labeling."""
-    
+
     enabled: bool = False
     vocabulary_path: Optional[str] = None  # Path to text file with labels
-    vocabulary: list = field(default_factory=lambda: ["object", "part", "animal", "vehicle", "background"])
+    vocabulary: list = field(
+        default_factory=lambda: ["object", "part", "animal", "vehicle", "background"]
+    )
     top_k: int = 5
     propagate: bool = True
 

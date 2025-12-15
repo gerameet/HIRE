@@ -25,9 +25,9 @@ from ..visualization import (
     overlay_masks_with_ids,
 )
 from ..visualization.attention import (
-    plot_attention_grid, 
-    plot_cls_attention, 
-    apply_heatmap
+    plot_attention_grid,
+    plot_cls_attention,
+    apply_heatmap,
 )
 from ..core.semantic_builder import SemanticHierarchyBuilder
 from ..labeling.auto_labeler import CLIPAutoLabeler
@@ -121,29 +121,37 @@ class ExperimentRunner:
                 )
 
             # Setup hierarchy builder
-            if hier_config.get("use_semantic_relations", False) and hier_config.get("method") == "semantic":
+            if (
+                hier_config.get("use_semantic_relations", False)
+                and hier_config.get("method") == "semantic"
+            ):
                 logger.info("Using SemanticHierarchyBuilder")
                 # Semantic builder needs the embedder (assuming it's compatible)
                 builder = SemanticHierarchyBuilder(
-                    config={"params": hier_config},
-                    embedder=embedding_method
+                    config={"params": hier_config}, embedder=embedding_method
                 )
             else:
                 builder = BottomUpHierarchyBuilder(config={"params": hier_config})
-                
+
             # Setup AutoLabeler if enabled
             label_config = self.config.get("labeling", {})
             labeler = None
             if label_config.get("enabled", False):
-                if embedding_method and hasattr(embedding_method, "model") and hasattr(embedding_method, "processor"):
+                if (
+                    embedding_method
+                    and hasattr(embedding_method, "model")
+                    and hasattr(embedding_method, "processor")
+                ):
                     logger.info("Initializing AutoLabeler")
                     labeler = CLIPAutoLabeler(
                         embedder=embedding_method,
                         vocabulary=label_config.get("vocabulary", []),
-                        device=device
+                        device=device,
                     )
                 else:
-                    logger.warning("AutoLabeler requires CLIPEmbedding method. Labeling disabled.")
+                    logger.warning(
+                        "AutoLabeler requires CLIPEmbedding method. Labeling disabled."
+                    )
 
             # Process images
             all_parts = []
@@ -175,34 +183,52 @@ class ExperimentRunner:
                             p.metadata.setdefault("image_path", str(img_path))
                             p.metadata.setdefault("image_size", (img.width, img.height))
 
-                        # Generate embeddings
+                            # Generate embeddings
                             for p in parts:
                                 p.embedding = embedding_method.embed_part(
                                     img_np, p.mask
                                 )
                                 # Phase 1: Attention Visualization
-                                if output_config.get("save_visualizations", True) and \
-                                   self.config.get("visualization", {}).get("plot_attention_maps", False):
-                                    
+                                if output_config.get(
+                                    "save_visualizations", True
+                                ) and self.config.get("visualization", {}).get(
+                                    "plot_attention_maps", False
+                                ):
+
                                     try:
-                                        attns = embedding_method.extract_attention(img_np, p.mask)
+                                        attns = embedding_method.extract_attention(
+                                            img_np, p.mask
+                                        )
                                         if attns:
                                             # Save logic (e.g., CLS attention)
-                                            attn_dir = viz_dir / "attention" / f"{img_path.stem}"
+                                            attn_dir = (
+                                                viz_dir
+                                                / "attention"
+                                                / f"{img_path.stem}"
+                                            )
                                             attn_dir.mkdir(parents=True, exist_ok=True)
-                                            
+
                                             if "cls_attention_mean" in attns:
                                                 heatmap = attns["cls_attention_mean"]
                                                 overlay = apply_heatmap(img_np, heatmap)
-                                                from PIL import Image as PILImage # ensure imported
-                                                PILImage.fromarray(overlay).save(attn_dir / f"part_{p.id}_attn.png")
+                                                from PIL import (
+                                                    Image as PILImage,
+                                                )  # ensure imported
+
+                                                PILImage.fromarray(overlay).save(
+                                                    attn_dir / f"part_{p.id}_attn.png"
+                                                )
                                     except Exception as e:
-                                        logger.warning(f"Failed to visualize attention for part {p.id}: {e}")
+                                        logger.warning(
+                                            f"Failed to visualize attention for part {p.id}: {e}"
+                                        )
 
                         # Phase 3: Auto-labeling
                         if labeler:
                             for p in parts:
-                                labels = labeler.label_part(p, top_k=label_config.get("top_k", 5))
+                                labels = labeler.label_part(
+                                    p, top_k=label_config.get("top_k", 5)
+                                )
                                 p.labels = [l for l, s in labels]
                                 p.label_scores = {l: s for l, s in labels}
 
@@ -211,9 +237,9 @@ class ExperimentRunner:
 
                         # Phase 3: Label Propagation
                         if labeler and label_config.get("propagate", True):
-                             prop = HierarchicalLabelPropagation()
-                             prop.propagate_top_down(graph)
-                             prop.propagate_bottom_up(graph)
+                            prop = HierarchicalLabelPropagation()
+                            prop.propagate_top_down(graph)
+                            prop.propagate_bottom_up(graph)
 
                         # Validate
                         errors = graph.validate()

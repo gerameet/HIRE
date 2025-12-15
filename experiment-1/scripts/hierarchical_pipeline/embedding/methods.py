@@ -114,13 +114,13 @@ class DummyEmbedding(EmbeddingMethod):
         self, image: np.ndarray, mask: np.ndarray
     ) -> Dict[str, np.ndarray]:
         """Generate dummy attention maps."""
-        if hasattr(self, 'rng'):
+        if hasattr(self, "rng"):
             return {
                 "last_attn": self.rng.rand(14, 14).astype(np.float32),
                 "cls_attn": self.rng.rand(14, 14).astype(np.float32),
             }
         else:
-             return {
+            return {
                 "last_attn": np.random.rand(14, 14).astype(np.float32),
                 "cls_attn": np.random.rand(14, 14).astype(np.float32),
             }
@@ -303,7 +303,7 @@ class DINOEmbedding(EmbeddingMethod):
         self, image: np.ndarray, mask: np.ndarray
     ) -> Dict[str, np.ndarray]:
         """Extract DINO attention maps.
-        
+
         Uses get_last_selfattention from DINO ViT models.
         """
         # Validate inputs
@@ -321,23 +321,23 @@ class DINOEmbedding(EmbeddingMethod):
             if hasattr(self.model, "get_last_selfattention"):
                 # Returns (B, n_heads, N, N)
                 attentions = self.model.get_last_selfattention(img_tensor)
-                attentions = attentions[0].cpu().numpy() # (n_heads, N, N)
-                
-                cls_attn = attentions[:, 0, 1:] # (n_heads, N-1)
-                
+                attentions = attentions[0].cpu().numpy()  # (n_heads, N, N)
+
+                cls_attn = attentions[:, 0, 1:]  # (n_heads, N-1)
+
                 # Reshape to grid
-                w_featmap = img_tensor.shape[-2] // 16 
+                w_featmap = img_tensor.shape[-2] // 16
                 h_featmap = img_tensor.shape[-1] // 16
-                
+
                 if cls_attn.shape[1] == w_featmap * h_featmap:
-                     cls_attn = cls_attn.reshape(-1, w_featmap, h_featmap)
-                
-                mean_cls_attn = np.mean(cls_attn, axis=0) # (H/p, W/p)
-                
+                    cls_attn = cls_attn.reshape(-1, w_featmap, h_featmap)
+
+                mean_cls_attn = np.mean(cls_attn, axis=0)  # (H/p, W/p)
+
                 return {
                     "last_selfattention": attentions,
                     "cls_attention_heads": cls_attn,
-                    "cls_attention_mean": mean_cls_attn
+                    "cls_attention_mean": mean_cls_attn,
                 }
             else:
                 return {}
@@ -452,40 +452,41 @@ class CLIPEmbedding(EmbeddingMethod):
         part_img = self._extract_part_image(image, mask)
 
         inputs = self.processor(images=part_img, return_tensors="pt").to(self.device)
-        
+
         with torch.no_grad():
             # CLIP model forward pass with output_attentions=True
             # Note: We need to access vision model directly
             if hasattr(self.model, "vision_model"):
                 outputs = self.model.vision_model(**inputs, output_attentions=True)
             elif hasattr(self.model, "get_image_features"):
-                 # Try to get underlying vision model if wrapped
-                 # This depends on specific CLIP implementation structure
-                 # Fallback: just return empty if complex
-                 return {}
+                # Try to get underlying vision model if wrapped
+                # This depends on specific CLIP implementation structure
+                # Fallback: just return empty if complex
+                return {}
 
             if outputs and hasattr(outputs, "attentions"):
                 attentions = outputs.attentions
-                last_attn = attentions[-1][0].cpu().numpy() # (n_heads, N, N)
-                
+                last_attn = attentions[-1][0].cpu().numpy()  # (n_heads, N, N)
+
                 # CLIP ViT-B/32
-                patch_size = 32 # Warning: hardcoded for B/32!
-                if "patch14" in self.model_name: patch_size = 14
-                
+                patch_size = 32  # Warning: hardcoded for B/32!
+                if "patch14" in self.model_name:
+                    patch_size = 14
+
                 w_featmap = inputs.pixel_values.shape[-1] // patch_size
                 h_featmap = inputs.pixel_values.shape[-2] // patch_size
-                
-                cls_attn = last_attn[:, 0, 1:] 
-                
+
+                cls_attn = last_attn[:, 0, 1:]
+
                 if cls_attn.shape[1] == w_featmap * h_featmap:
-                     cls_attn = cls_attn.reshape(-1, h_featmap, w_featmap)
-                     
+                    cls_attn = cls_attn.reshape(-1, h_featmap, w_featmap)
+
                 mean_cls_attn = np.mean(cls_attn, axis=0)
-                
+
                 return {
                     "last_layer_attention": last_attn,
                     "cls_attention_heads": cls_attn,
-                    "cls_attention_mean": mean_cls_attn
+                    "cls_attention_mean": mean_cls_attn,
                 }
             return {}
 
@@ -758,19 +759,21 @@ class DINOv2Embedding(EmbeddingMethod):
         self, image: np.ndarray, mask: np.ndarray
     ) -> Dict[str, np.ndarray]:
         """Extract DINOv2 attention maps.
-        
+
         DINOv2 hub models don't expose get_last_selfattention directly.
         We rely on hooks or assume standard ViT structure.
         """
         # Note: Implementing reliable hooks via hub model is tricky without knowing exact structure
-        # which can vary by size. For now we will return empty and log warning, 
+        # which can vary by size. For now we will return empty and log warning,
         # or try a known hook if simple.
-        
+
         # DINOv2 typically has .blocks[-1].attn.attn_drop (or similar)
         # but capturing intermediate values cleanly requires register_forward_hook
-        
+
         # Simple implementation: Return NotImplemented for now or try-catch hook
-        
+
         # Let's try to extract if possible, else warn
-        logger.warning("DINOv2 attention extraction requires model inspection. Returning empty.")
+        logger.warning(
+            "DINOv2 attention extraction requires model inspection. Returning empty."
+        )
         return {}

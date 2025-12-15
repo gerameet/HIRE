@@ -58,7 +58,7 @@ class WordNetKnowledge:
             List of immediate hypernyms.
         """
         return synset.hypernyms()
-    
+
     def get_all_hypernyms(self, synset: Synset) -> Set[Synset]:
         """Get all ancestor concepts recursively."""
         hypernyms = set()
@@ -92,7 +92,7 @@ class WordNetKnowledge:
             + synset.part_holonyms()
             + synset.substance_holonyms()
         )
-    
+
     def get_meronyms(self, synset: Synset) -> List[Synset]:
         """Get parts of this concept."""
         return (
@@ -103,7 +103,7 @@ class WordNetKnowledge:
 
     def semantic_similarity(self, word1: str, word2: str) -> float:
         """Compute max semantic similarity between two words.
-        
+
         Uses path similarity between best matching synsets.
 
         Args:
@@ -126,15 +126,15 @@ class WordNetKnowledge:
                 if sim and sim > max_sim:
                     max_sim = sim
         return max_sim
-    
+
     def is_hypernym(self, parent_word: str, child_word: str) -> bool:
         """Check if parent_word is an ancestor of child_word."""
         parents = self.get_synsets(parent_word, pos=wn.NOUN)
         children = self.get_synsets(child_word, pos=wn.NOUN)
-        
+
         if not parents or not children:
             return False
-            
+
         # Check if any parent synset is an ancestor of any child synset
         for child in children:
             ancestors = self.get_all_hypernyms(child)
