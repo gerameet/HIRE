@@ -102,6 +102,20 @@ done
 ./experiment compare seg_sam seg_yolo seg_mask2former
 ```
 
+### Semantic Hierarchy & Labeling
+
+Enable knowledge-integrated hierarchy building and automatic part labeling.
+
+```bash
+# Run with semantic hierarchy (WordNet+CLIP) and auto-labeling
+./experiment run \
+  --name "semantic_run" \
+  --semantic-hierarchy \
+  --auto-label \
+  -o embedding.method=clip \
+  -o data.max_images=10
+```
+
 ---
 
 ## Visualization Workflows
@@ -131,6 +145,17 @@ done
 ./experiment visualize clusters EXP_ID \
   --n-clusters 10 \
   --output analysis/clusters.html
+```
+
+### Attention Analysis
+
+```bash
+# Visualize generic attention
+./experiment run \
+  --visualize-attention \
+  -o data.max_images=5
+
+# Resulting heatmaps: output/hierarchical/visualizations/attention/
 ```
 
 ### Experiment Comparison

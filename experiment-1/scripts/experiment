@@ -99,6 +99,17 @@ def cmd_run(args):
             "segmentation.model=dummy",
             "embedding.method=dummy"
         ])
+
+    # Handle feature flags
+    if args.visualize_attention:
+        overrides.append("visualization.plot_attention_maps=true")
+    if args.auto_label:
+        overrides.append("labeling.enabled=true")
+    if args.semantic_hierarchy:
+        overrides.extend([
+            "hierarchy.method=semantic",
+            "hierarchy.use_semantic_relations=true"
+        ])
     
     config = load_config_with_overrides(args.config, overrides)
     
@@ -610,6 +621,12 @@ def main():
     p_run.add_argument("--device", choices=["cuda", "cpu"], help="Device to use")
     p_run.add_argument("--override", "-o", action="append",
                       help="Override config values (e.g., -o data.max_images=10)")
+    p_run.add_argument("--visualize-attention", action="store_true", 
+                      help="Enable attention map visualization (Phase 1)")
+    p_run.add_argument("--auto-label", action="store_true",
+                      help="Enable auto-labeling with default vocabulary (Phase 3)")
+    p_run.add_argument("--semantic-hierarchy", action="store_true",
+                      help="Use semantic hierarchy builder (Phase 2)")
     p_run.add_argument("--verbose", "-v", action="store_true", help="Verbose output")
     p_run.set_defaults(func=cmd_run)
     

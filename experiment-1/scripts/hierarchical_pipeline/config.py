@@ -51,6 +51,10 @@ class HierarchyConfig:
             "spatial_threshold": 0.3,
             "containment_threshold": 0.7,
             "max_depth": 5,
+            "use_semantic_relations": False,
+            "spatial_weight": 0.5,
+            "semantic_weight": 0.5,
+            "concept_candidates": [],
         }
     )
 
@@ -76,6 +80,17 @@ class OutputConfig:
 
 
 @dataclass
+class LabelingConfig:
+    """Configuration for automatic labeling."""
+    
+    enabled: bool = False
+    vocabulary_path: Optional[str] = None  # Path to text file with labels
+    vocabulary: list = field(default_factory=lambda: ["object", "part", "animal", "vehicle", "background"])
+    top_k: int = 5
+    propagate: bool = True
+
+
+@dataclass
 class VisualizationConfig:
     """Configuration for visualizations."""
 
@@ -83,6 +98,9 @@ class VisualizationConfig:
     plot_spatial_overlay: bool = True
     plot_embedding_space: bool = True
     plot_attention_maps: bool = False
+    attention_layer: int = -1  # -1 for last layer
+    attention_reduction: str = "mean"  # "mean", "max", or "head_N"
+    save_attention_data: bool = False  # Save raw attention numpy arrays
 
 
 @dataclass
@@ -104,6 +122,7 @@ class PipelineConfig:
     embedding: EmbeddingConfig = field(default_factory=EmbeddingConfig)
     hierarchy: HierarchyConfig = field(default_factory=HierarchyConfig)
     knowledge: KnowledgeConfig = field(default_factory=KnowledgeConfig)
+    labeling: LabelingConfig = field(default_factory=LabelingConfig)
     output: OutputConfig = field(default_factory=OutputConfig)
     visualization: VisualizationConfig = field(default_factory=VisualizationConfig)
     gpu: GPUConfig = field(default_factory=GPUConfig)
@@ -324,6 +343,10 @@ hierarchy:
     spatial_threshold: 0.3
     containment_threshold: 0.7
     max_depth: 5
+    use_semantic_relations: false
+    spatial_weight: 0.5
+    semantic_weight: 0.5
+    concept_candidates: []
 
 knowledge:
   use_knowledge_graph: false

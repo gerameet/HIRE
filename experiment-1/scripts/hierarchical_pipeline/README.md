@@ -14,7 +14,17 @@ hierarchical_pipeline/
 ├── core/                    # Core components
 │   ├── __init__.py
 │   ├── interfaces.py        # Abstract interfaces
-│   └── data.py              # Data structures (Part, Node, ParseGraph)
+│   ├── data.py              # Data structures (Part, Node, ParseGraph)
+│   └── semantic_builder.py  # Knowledge-guided builder
+├── knowledge/               # External knowledge integration
+│   ├── wordnet.py           # WordNet interface
+│   └── concept_alignment.py # CLIP-based concept alignment
+├── labeling/                # Automatic labeling
+│   ├── auto_labeler.py      # Zero-shot labeler
+│   └── propagation.py       # Label propagation logic
+├── visualization/           # Visualization tools
+│   ├── attention.py         # Attention maps
+│   └── ...
 └── utils/                   # Utility modules
     ├── __init__.py
     └── gpu.py               # GPU management utilities
@@ -33,7 +43,13 @@ The pipeline is built around three main abstract interfaces that enable modular 
    - Implementations: DINO, CLIP, MAE, MoCo
    
 3. **HierarchyBuilder**: Constructs compositional parse graphs
-   - Implementations: Bottom-up clustering, top-down parsing, hybrid approaches
+   - Implementations: Bottom-up clustering, Semantic (WordNet+CLIP)
+
+4. **KnowledgeIntegration**: External semantic grounding
+   - Sources: WordNet, CLIP Concept Space
+
+5. **AutoLabeler**: Semantic tagging and propagation
+   - Features: Zero-shot tagging, Top-down/Bottom-up propagation
 
 ### Data Structures
 
@@ -114,9 +130,19 @@ embedding:
   embedding_dim: 768
 
 hierarchy:
-  method: "bottom_up"
+  method: "semantic"  # or "bottom_up"
   params:
-    spatial_threshold: 0.3
+    use_semantic_relations: true
+    spatial_weight: 0.5
+
+knowledge:
+  sources: ["wordnet"]
+  alignment_threshold: 0.5
+
+labeling:
+  enabled: true
+  vocabulary: ["object", "part"]
+  propagate: true
 
 gpu:
   device: null  # Auto-detect
@@ -168,12 +194,12 @@ This is a research project prioritizing:
 
 ## Next Steps
 
-This is Phase 1 (Foundation). Upcoming phases will add:
-- Phase 2: Self-supervised embeddings (DINO, CLIP)
-- Phase 3: Object-centric discovery (Slot Attention, SAM)
-- Phase 4: Hyperbolic embeddings and knowledge integration
-- Phase 5: Advanced hierarchy construction
-- Phase 6: Analysis, metrics, and documentation
+This is a living research codebase.
+- Phase 1: Foundation & GPU Utilities (Complete)
+- Phase 2: Self-supervised embeddings & Semantic Hierarchy (Complete)
+- Phase 3: Object-centric discovery & Labeling (Complete)
+- Phase 4: Integration & Visualization (Complete)
+- Phase 5: Advanced evaluation & benchmarking
 
 ## License
 

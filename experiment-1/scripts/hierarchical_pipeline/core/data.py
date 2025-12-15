@@ -29,6 +29,8 @@ class Part:
     embedding: Optional[np.ndarray] = None  # Semantic embedding
     confidence: float = 1.0  # Discovery confidence
     metadata: Dict[str, Any] = field(default_factory=dict)
+    labels: List[str] = field(default_factory=list)  # Semantic labels
+    label_scores: Dict[str, float] = field(default_factory=dict)  # Label -> confidence
 
     def __post_init__(self):
         """Validate and normalize data."""
@@ -82,6 +84,8 @@ class Node:
     concept_confidence: float = 0.0
     children: List[str] = field(default_factory=list)  # Child node IDs
     parent: Optional[str] = None  # Parent node ID
+    inherited_labels: List[str] = field(default_factory=list)  # From parent
+    combined_labels: List[str] = field(default_factory=list)  # Union of own + inherited
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary (for serialization)."""

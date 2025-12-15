@@ -145,6 +145,25 @@ class EmbeddingMethod(ABC):
             "config": self.config,
         }
 
+    def extract_attention(
+        self, image: np.ndarray, mask: np.ndarray
+    ) -> Dict[str, np.ndarray]:
+        """Extract attention maps for a masked region.
+
+        Args:
+            image: Full image as numpy array (H, W, C)
+            mask: Binary mask for the part (H, W)
+
+        Returns:
+            Dictionary mapping layer/head names to attention maps (H, W) or (N, N)
+
+        Raises:
+            NotImplementedError: If method does not support attention extraction
+        """
+        raise NotImplementedError(
+            f"Attention extraction not implemented for {self.__class__.__name__}"
+        )
+
 
 class HierarchyBuilder(ABC):
     """Abstract interface for hierarchy construction methods.
